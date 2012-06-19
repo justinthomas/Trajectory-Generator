@@ -10,16 +10,18 @@
  * This is a MEX-file for MATLAB
  */
 
-/* void trajgen(double y[], double x[])
+void trajgen(double *traj, double *args)
 {
-  y[0] = 2.0*x[0];
-  }*/
+  
+}
 
 void mexFunction( int nlhs, mxArray *plhs[],
                   int nrhs, const mxArray *prhs[] )
 {
-  /* double *x,*y;
-     size_t mrows,ncols;*/
+  double *x,*y;
+  double *waypoints, *bounds, *options;
+  double *traj;
+  // size_t mrows,ncols;
   const char *fields[1]; /* Pointers to the field names */
   
   /* Check for proper number of arguments. */
@@ -31,27 +33,35 @@ void mexFunction( int nlhs, mxArray *plhs[],
     mexErrMsgIdAndTxt("MATLAB:trajgen:maxlhs", "Too many output arguments.");
   }
   
-  /* The input datatypes must be a cell array and a struct */
-  if(!mxIsCell(prhs[0])) {
-    mexErrMsgIdAndTxt("MATLAB:trajgen:inputTypes", "The first input must be a cell array.");
+  /* The input datatypes must be structs */
+  if(!mxIsStruct(prhs[0])) {
+    mexErrMsgIdAndTxt("MATLAB:trajgen:inputTypes", "The first input must be a struct.");
   }else if(nrhs > 1 && !mxIsStruct(prhs[1]) && !mxIsEmpty(prhs[1])){
     mexErrMsgIdAndTxt("MATLAB:trajgen:inputTypes", "The second input must be a struct.");
   }else if(nrhs > 2 && !mxIsStruct(prhs[2]) && !mxIsEmpty(prhs[2])){
     mexErrMsgIdAndTxt("MATLAB:trajgen:inputTypes", "The third input must be a struct.");
-    }
+  }
   
   /* Create struct for the return argument. */
-  /* Dummy stuff for now */
-  fields[0] = "Field1";
-  /* fields[1]="Field2"; */
-  plhs[0] = mxCreateStructMatrix(1, 1, 1, fields);
+  /* Dummy struct for now */
+  fields[0] = "t";
+  fields[1] = "x";
+  fields[2] = "y";
+  fields[3] = "z";
+  fields[4] = "psi";
+  
+  plhs[0] = mxCreateStructMatrix(1, 1, 5, fields);
   // mexPrintf(fields[0]); 
   
-  /* Assign pointers to each input and output. */
-  /* x = mxGetPr(prhs[0]); */
-  /* y = mxGetPr(plhs[0]); */
+  // Create structs for ipnuts arguments
+  // Assign pointers to each input and output
+  waypoints = mxGetPr(prhs[0]);
+  bounds = mxGetPr(prhs[1]);
+  options = mxGetPr(prhs[2]);
+  traj = mxGetPr(plhs[0]);
   
-  /* Call the trajgen subroutine. */
-  /* trajgen(y,x); */
+  // Call the trajgen subroutine
+  trajgen(traj, waypoints);
+  
   return;
 }

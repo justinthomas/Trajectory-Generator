@@ -11,13 +11,13 @@ addpath('../matlab/');
 
 
 
-waypoints(1) = EmptyWaypoint(0);
+waypoints(1) = ZeroWaypoint(0);
 waypoints(2) = NanWaypoint(1);
-waypoints(1) = EmptyWaypoint(0);
+waypoints(1) = ZeroWaypoint(0);
 
+bounds = waypoints;
+options = struct('option1', {}, 'option2', {});
 
+% trajectory = trajgen(waypoints,bounds,options)
 
-
-% trajectory = trajgen(waypoints,bounds,options);
-
-
+  trajectory = trajgen(waypoints)
