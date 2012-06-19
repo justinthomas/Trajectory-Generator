@@ -10,17 +10,16 @@
  * This is a MEX-file for MATLAB
  */
 
-void trajgen(double *traj, double *args)
+void trajgen(mxArray *traj, mxArray *waypoints, mxArray *bounds, mxArray *options)
 {
   
 }
 
-void mexFunction( int nlhs, mxArray *plhs[],
-                  int nrhs, const mxArray *prhs[] )
+void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
-  double *x,*y;
-  double *waypoints, *bounds, *options;
-  double *traj;
+
+  mxArray *waypoints, *bounds, *options;
+  mxArray *traj;
   // size_t mrows,ncols;
   const char *fields[1]; /* Pointers to the field names */
   
@@ -53,15 +52,22 @@ void mexFunction( int nlhs, mxArray *plhs[],
   plhs[0] = mxCreateStructMatrix(1, 1, 5, fields);
   // mexPrintf(fields[0]); 
   
-  // Create structs for ipnuts arguments
-  // Assign pointers to each input and output
-  waypoints = mxGetPr(prhs[0]);
-  bounds = mxGetPr(prhs[1]);
-  options = mxGetPr(prhs[2]);
-  traj = mxGetPr(plhs[0]);
+  // Assign pointers to each input
+  if(nrhs>=1) {
+    waypoints = mxGetData(prhs[0]);
+  }
+  if(nrhs>=2) {
+    bounds = mxGetData(prhs[1]);
+  }
+  if(nrhs>=3) {
+    options = mxGetData(prhs[2]);
+  }
   
+  // Assign a pointer to the output
+  traj = mxGetData(plhs[0]);
+
   // Call the trajgen subroutine
-  trajgen(traj, waypoints);
+  trajgen(traj, waypoints, bounds, options);
   
   return;
 }

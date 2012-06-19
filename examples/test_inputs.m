@@ -23,6 +23,7 @@ waypoints(3).pos = [0;1;2];
 bounds(1) = SetBound([],'pos','lb',[-2,-2,0]);
 bounds(2) = SetBound([0,1],'pos','ub',[2,2,4]);
 
+options = {};
 
 % call the trajectory function
 trajectory = trajgen(waypoints,bounds,options);
