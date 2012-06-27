@@ -14,11 +14,11 @@
 
 void trajgen(mxArray *traj, mxArray *waypoints, mxArray *bounds, mxArray *options)
 {
-  int n = 13;
-  float temp;
-  temp = basisgen(13,0,0);
-  fprintf('%f',temp);
-
+    int n = 5;
+    float *test;
+    test = basisgen(n,0,0);
+    mexPrintf("yo, I get: %f and %f\n",test[0],test[1]);
+    free(test);
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
@@ -28,7 +28,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   mxArray *traj;
   // size_t mrows,ncols;
   const char *fields[1]; /* Pointers to the field names */
-  
+
   /* Check for proper number of arguments. */
   if(nrhs==0) {
     mexErrMsgIdAndTxt("MATLAB:trajgen:invalidNumInputs", "At least one input is required.");
@@ -37,7 +37,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   } else if(nlhs>1) {
     mexErrMsgIdAndTxt("MATLAB:trajgen:maxlhs", "Too many output arguments.");
   }
-  
+
   /* The input datatypes must be structs */
   if(!mxIsStruct(prhs[0])) {
     mexErrMsgIdAndTxt("MATLAB:trajgen:inputTypes", "The first input must be a struct.");
@@ -46,7 +46,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   }else if(nrhs > 2 && !mxIsStruct(prhs[2]) && !mxIsEmpty(prhs[2])){
     mexErrMsgIdAndTxt("MATLAB:trajgen:inputTypes", "The third input must be a struct.");
   }
-  
+
   /* Create struct for the return argument. */
   /* Dummy struct for now */
   fields[0] = "t";
@@ -54,10 +54,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   fields[2] = "y";
   fields[3] = "z";
   fields[4] = "psi";
-  
+
   plhs[0] = mxCreateStructMatrix(1, 1, 5, fields);
-  // mexPrintf(fields[0]); 
-  
+  // mexPrintf(fields[0]);
+
   // Assign pointers to each input
   if(nrhs>=1) {
     waypoints = mxGetData(prhs[0]);
@@ -68,12 +68,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   if(nrhs>=3) {
     options = mxGetData(prhs[2]);
   }
-  
+
   // Assign a pointer to the output
   traj = mxGetData(plhs[0]);
 
   // Call the trajgen subroutine
   trajgen(traj, waypoints, bounds, options);
-  
+
   return;
 }

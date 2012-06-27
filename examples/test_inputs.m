@@ -7,7 +7,8 @@ clc
 
 addpath('../src/');
 addpath('../matlab/');
-
+addpath('./matlab/');
+addpath('./src/');
 
 % create a sequence of waypoints
 waypoints(1) = ZeroWaypoint(0);
