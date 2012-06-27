@@ -1,6 +1,8 @@
 #include "mex.h"
+#include "math.h"
 #include "matrix.h"
 #include "string.h"
+#include "trajgen.h"
 
 /*
  * trajectory_generator.c
@@ -12,7 +14,11 @@
 
 void trajgen(mxArray *traj, mxArray *waypoints, mxArray *bounds, mxArray *options)
 {
-  
+  int n = 13;
+  float temp;
+  temp = basisgen(13,0,0);
+  fprintf('%f',temp);
+
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
