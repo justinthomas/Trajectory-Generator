@@ -14,11 +14,20 @@
 
 void trajgen(mxArray *traj, mxArray *waypoints, mxArray *bounds, mxArray *options)
 {
-    int n = 5;
-    float *test;
-    test = basisgen(n,0,0);
-    mexPrintf("yo, I get: %f and %f\n",test[0],test[1]);
-    free(test);
+  int n = 10, d = 1, idx;
+  float t = 2;
+  float *basis;
+  
+  basis = basisgen(n,d,t);
+
+  //Print the results
+  mexPrintf("The basis for a %dth order polynomial differentiated %d time(s) and evaluated at t = %f:\n",n,d,t);
+
+  for(idx=0; idx<(n+1); idx++)
+    mexPrintf("%4.2f\n",basis[idx]);
+
+  // Free the memory
+  free(basis);
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])

@@ -27,6 +27,7 @@ bounds(2) = SetBound([0,1],'pos','ub',[2,2,4]);
 options = {};
 
 % call the trajectory function
+tic
 trajectory = trajgen(waypoints,bounds,options);
-
+toc
 
