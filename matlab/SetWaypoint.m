@@ -1,7 +1,7 @@
 function waypoint = SetWaypoint(time,varargin)
 
 % allowed inputs are:
-inputs = {'pos','vel','acc','jerk','psi'};
+inputs = {'pos','vel','acc','jerk'};
 
 % this creates an empty struct with all the required inputs
 %  note that the next two lines could be replaced with: for ii =

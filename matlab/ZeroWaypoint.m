@@ -1,7 +1,8 @@
-function output = ZeroWaypoint(time)
+function output = ZeroWaypoint(time,ndim)
 
 if nargin<1
     time = nan;
 end
 
-output = struct('time',{time},'pos',{[0;0;0]},'vel',{[0;0;0]},'acc',{[0;0;0]},'jerk',{[0;0;0]},'psi',{[0;0;0]});
+temp = zeros(ndim,1);
+output = struct('time',{time},'pos',{temp},'vel',{temp},'acc',{temp},'jerk',{temp});
