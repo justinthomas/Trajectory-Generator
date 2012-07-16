@@ -31,7 +31,7 @@ waypoints(3).jerk = [0; 0; 0; NaN];
 bounds(1) = SetBound([],'pos','lb',[-2,-2,0,nan]);
 bounds(2) = SetBound([0,1],'pos','ub',[2,2,4,nan]);
 
-options = {'ndim',ndim,'polyorder', 10,'minderiv', [4 4 4 2]};
+options = {'ndim',ndim,'polyorder', 5,'minderiv', [4 4 4 2]};
 
 % call the trajectory function
 tic

@@ -45,22 +45,6 @@ keytimes = [waypoints.time]; % Keytimes
 
 D = differential_linear_operators(n);
 
-% Initalize the order and differential operators in the basis generators
-basis(0, 0, n, D);
-
-% coeffs has the coefficients along the rows, segments along columns, and
-% flat output in the 3rd dimension.
-coeffs = cell(d, N);
-fo = cell(d,1);
-
-% Determine the powers
-powers = (n:-1:0)';
-
-% Determine the Base Hpow matrix (this does not need to be recalculated for
-% each flat output and segment)
-Hpow_base = repmat(powers,1,n+1)+repmat(powers',n+1,1);
-
-
 %% Equality constraints
 
 % Determine the size of E for preallocation.  There will be a row for every
@@ -217,17 +201,36 @@ end
 
 %% The H Matrix
 
-% Generate a matrix which represents the powers of H
-        Hpow = Hpow_base-2*numderiv;
+% Initalize H
+H = zeros((N+1)*d*(n+1));
+
+% Determine the powers
+powers = (n:-1:0)';
+
+% Determine the Base Hpow matrix (this does not need to be recalculated for
+% each flat output and segment)
+Hpow_base = repmat(powers,1,n+1)+repmat(powers',n+1,1);
+
+% Initalize our row indexes
+rows = 1:(n+1);
+
+% Loop through the segments
+for seg = 1:N
+    
+    % Loop through the dimensions
+    for idx = 1:d
         
+        % Generate a matrix which represents the powers of H
+        Hpow = Hpow_base-2*minderiv(idx);
+        keyboard
         % Determine the coefficients
-        if ~isequal(numderiv,0)
-            Hcoeffs = D{numderiv}'*ones(n+1,1);
+        if ~isequal(minderiv(idx),0)
+            Hcoeffs = sum(D{minderiv(idx)})';
             Hcoeffs = Hcoeffs*Hcoeffs';
         else
             Hcoeffs = ones(n+1);
         end
-
+        
         % Now integrate
         Hpow(Hpow >= 0) = Hpow(Hpow >= 0) + 1;
         Hcoeffs(Hpow > 0) = Hcoeffs(Hpow > 0)./Hpow(Hpow > 0);
@@ -236,8 +239,13 @@ end
         Hcoeffs(Hpow < 0) = 0;
         Hpow(Hpow < 0) = 0;
         
-        %problem.H = Hcoeffs.*(t.^Hpow);
-        problem.H = Hcoeffs.*(keytimes(seg+1).^Hpow) - Hcoeffs.*(keytimes(seg).^Hpow);
+        % And store this block in H
+        H(rows,rows) = Hcoeffs.*(keytimes(seg+1).^Hpow) - Hcoeffs.*(keytimes(seg).^Hpow);
+        
+        % Now increment to the next diagonal block
+        rows = rows + (n+1);
+    end
+end
 
         %% Inequality constraints
         
@@ -264,58 +272,12 @@ end
         %
         %             end
         
-        %% Equality constraints
-        % Setup our boundary conditions based on the coefficients and
-        % our basis
+        %% Construct the problem
         
-        % In the case where we are minimizing error, we are looking at a
-        % receeding horizion problem and don't actually need to specify a
-        % final boundary condition
-        problem.Aeq = [...
-            bcbasis(keytimes(seg),0, n, D);             % Initial position
-            bcbasis(keytimes(seg),1, n, D);           % Initial velocity
-            bcbasis(keytimes(seg),2, n, D);           % Initial Acceleration
-            bcbasis(keytimes(seg),3, n, D)];           % Initial Jerk;
+        problem.H = H;
+        problem.Aeq = [E; C];
+        problem.beq = [Ebeq; Cbeq];
         
-        % If the initial conditions are not set, leave them as free
-        problem.Aeq = [];
-        for idx = 1:floor(length(start)/4)
-            problem.Aeq = [problem.Aeq;
-                bcbasis(keytimes(seg),idx-1,n,D)];
-        end
-        
-        if ~isempty(finish)
-            problem.Aeq = [problem.Aeq;            
-                bcbasis(keytimes(seg+1),0, n, D);       % Final Position
-                bcbasis(keytimes(seg+1),1, n, D);       % Final velocity
-                bcbasis(keytimes(seg+1),2, n, D);       % Final Acceleration
-                bcbasis(keytimes(seg+1),3, n, D)];      % Final Jerk
-        end
-%         for idx = 1:size(constraints,2)
-%             problem.Aeq = [problem.Aeq; bcbasis(0,
-%         end
-        
-        % Here we actually specify the constraint
-        problem.beq = [...
-            s(flat_out,seg, 1);                                         %  Initial Position
-            s(flat_out,seg, 2);                                    % Initial Velocity
-            s(flat_out,seg, 3);                                  % Initial Acceleration
-            s(flat_out,seg, 4)];                               % Jerk
-        
-        % Only set the initial conditions which are defined
-        problem.beq = [];
-        for deriv_p1 = 1:floor(length(start)/4)
-            problem.beq = [problem.beq;
-                s(flat_out, seg, deriv_p1)];
-        end
-        
-        if ~isempty(finish)
-            problem.beq = [problem.beq;
-            s(flat_out,seg+1, 1);                                    % Final Position
-            s(flat_out,seg+1, 2);                               % Final Velocity
-            s(flat_out,seg+1, 3);                             % Final Acceleration
-            s(flat_out,seg+1, 4)];                          % Jerk
-        end
         %% Determine the solution
         
         % min x'*H*x  subject to:  A*x <= b and Aeq*x = beq
@@ -338,7 +300,6 @@ end
             coeffs{flat_out,seg} = quadprog(problem);
         end
         
-    end
     
     % Ensure that we do not get stuck in the trajectory generator
     if toc(ticker) > .3
@@ -346,32 +307,5 @@ end
         warning('Trajectory Generator took too long'); %#ok<WNTAG>
         return
     end
-    
-end
-
-%% Save the trajectory
-
-% This script collects everything and stores it in the traj struct
-build_traj
 
 end
-
-
-
-% function vec = basisgen(t,order)
-% % This function generates a basis vector of order n at times t.  It has a
-% % dimension of n+1 by size(t,1) and takes the form [t.^n t.^(n-1) ... t 1]'
-% 
-% persistent n
-% 
-% if nargin > 1
-%     n = order;
-% end
-% 
-% if ~isequal(size(t,2),1)
-%     error('t must be a column vector or scalar.');
-% end
-% 
-% vec = t.^(n:-1:0)';
-% 
-% end
