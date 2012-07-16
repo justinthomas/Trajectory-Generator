@@ -11,6 +11,7 @@ n = 10;      % Polynomial order
 
 %% Process varargin
 for idx = 1:2:length(options)
+    
     switch options{idx}
         case 'polyorder'
             n = options{idx+1};
@@ -19,11 +20,13 @@ for idx = 1:2:length(options)
             % minderiv = 4 corresponds to snap
             % minderiv = 2 corresponds to acceleration
             % minderiv = 0 corresponds to position
-            minderiv = options{idx+1};
+            minderiv = max(0,options{idx+1});
+            if max(minderiv)>4; warning('This program can only support up to 4 derivatives at this time.'); end; %#ok<WNTAG>
         case 'ndim'
             % The number of dimensions we have.
-            % For example, for a regular quadrotor, we have 4: x,y,z,psi
+            % For example, for a typical quadrotor, we have 4: x,y,z,psi
             d = options{idx+1}; 
+            if d <= 0;  warning('Do you really want a <= 0 dimensional system?'); end %#ok<WNTAG>
     end
 end
 
@@ -31,7 +34,7 @@ ticker = tic;
 traj = [];
 warning off MATLAB:nearlySingularMatrix
 
-%% Keyframes and times
+%% Keytimes, Segments
 
 % How many segments do we have
 N = size(waypoints,2) - 1;
@@ -49,10 +52,6 @@ basis(0, 0, n, D);
 % flat output in the 3rd dimension.
 coeffs = cell(d, N);
 fo = cell(d,1);
-D1fo = fo;
-D2fo = fo;
-D3fo = fo;
-D4fo = fo;
 
 % Determine the powers
 powers = (n:-1:0)';
@@ -61,55 +60,164 @@ powers = (n:-1:0)';
 % each flat output and segment)
 Hpow_base = repmat(powers,1,n+1)+repmat(powers',n+1,1);
 
-E = [];
-for seg = 1:N
-    % The matrix E will have 2 rows for every constraint except the first
-    % and last waypoints.  Additionally, it will have d*N*(n+1) columns.
-    % Before each basis group (in each row), there will be 
+
+%% Equality constraints
+
+% Determine the size of E for preallocation.  There will be a row for every
+% non-NaN and non-empty constraint.  This will also generate an error if 
+% the dimensions of the waypoints are not consistent 
+% (i.e. d is the not the same size for all waypoints)
+nrows = sum(sum(~isnan([...
+    [waypoints.pos],...
+    [waypoints.vel],...
+    [waypoints.acc],...
+    [waypoints.jerk]])));
+
+% Preallocate E and Ebeq
+E = zeros(nrows,d*N*(n+1));
+Ebeq = zeros(nrows,1);
+
+% Initalize a row index for E and Ebeq
+row = 1;
+
+% And now populate E with the appropriate bases
+for pt = 1:N+1
+    % The matrix E will have 1 row for every constraint.
+    % Additionally, it will have d*N*(n+1) columns.
+    % Before each basis group (bgroup) in each row, there will be
     % ((idx - 1) + d*(seg-1))*(n+1) zeros where idx indexes the output (d)
     % and seg indexes the polynomial segment (N).  Then, we know the basis
     % will occupy (n+1) columns.  Finally, the resulting number of zeros is
     % simply the difference of the total columns in the row and the already
     % occupied columns.
     
-        if ~isempty(waypoints(seg).pos)
-            t = waypoints(seg).time;
-            for idx = 1:d
-                E = [E;...
-                    zeros(1,((idx-1)+d*(seg-1))*(n+1)), basis(t,0,n,D), zeros(1,(d*(N + 1 - seg) - idx)*(n+1))];
+    % Extract the time
+    t = waypoints(pt).time;
+    
+    % We need to make the last waypoint fall on the end of the last
+    % segment, not the beginning of the next segment.
+    bgroup = min(pt,N);
+    
+    % Now, establish the constraints
+    if ~isempty(waypoints(pt).pos)
+        deriv = 0;
+        temp = basis(t,deriv,n,D);
+        for idx = 1:d
+            if ~isnan(waypoints(pt).pos(idx)) && (deriv < minderiv(idx))
+                startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
+                E(row,startidx:startidx+n) = temp;
+                Ebeq(row) = waypoints(pt).pos(idx);
+                row = row+1;
             end
         end
-        
+    end
+    
+    if ~isempty(waypoints(pt).vel)
+        deriv = 1;
+        temp = basis(t,deriv,n,D);
+        for idx = 1:d
+            if ~isnan(waypoints(pt).vel(idx)) && (deriv < minderiv(idx))
+                startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
+                E(row,startidx:startidx+n) = temp;
+                Ebeq(row) = waypoints(pt).vel(idx);
+                row = row+1;
+            end
+        end
+    end
+    
+    if ~isempty(waypoints(pt).acc)
+        deriv = 2;
+        temp = basis(t,deriv,n,D);
+        for idx = 1:d
+            if ~isnan(waypoints(pt).acc(idx)) && (deriv < minderiv(idx))
+                startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
+                E(row,startidx:startidx+n) = temp;
+                Ebeq(row) = waypoints(pt).acc(idx);
+                row = row+1;
+            end
+        end
+    end
+    
+    if ~isempty(waypoints(pt).jerk)
+        deriv = 3;
+        temp = basis(t,deriv,n,D);
+        for idx = 1:d
+            if ~isnan(waypoints(pt).jerk(idx)) && (deriv < minderiv(idx))
+                startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
+                E(row,startidx:startidx+n) = temp;
+                Ebeq(row) = waypoints(pt).jerk(idx);
+                row = row+1;
+            end
+        end
+    end
 end
-keyboard
 
-optimize_count = 0;
-while (1)   % Optimization loop
-    optimize_count = optimize_count + 1;
-    
-    times = keytimes(seg):tstep:(keytimes(seg+1) - tstep);
-    
-    % Segment durations
-    t = diff(keytimes);
+%% Continuity constraints
 
-    % Quadratic Optimization for each element for the current segment in our flat space
-    for flat_out = 1:options.ndim
+% There will be the same number of columns as in the matrix E, but now
+% there will be a continunity constraint for each output that has a
+% derivative below the one we are minimizing.
+
+% There will be a continunity constraint (except for the first and last points)
+% for each output and its derivatives below the one being minimized.
+nrows = sum((N-1)*minderiv);
+C = zeros(nrows,d*N*(n+1));
+
+% This will be zeros since we have 
+% basis' * coeffs1 - basis' * coeffs2 = 0
+Cbeq = zeros(nrows,1);
+
+% Initalize our row counter
+row = 1;
+
+% And now populate C with the appropriate bases
+for pt = 2:N
+    % The matrix C will have 1 row for every constraint.
+    % Additionally, it will have d*N*(n+1) columns.
+    % Before each basis group (bgroup) in each row, there will be
+    % ((idx - 1) + d*(pt-1))*(n+1) zeros where idx indexes the output (d)
+    % and pt indexes the polynomial segment (N).  Finally, we know the basis
+    % will occupy (n+1) columns.
+    
+    % The first group will be one less than the point.  For example, for
+    % the continunity constraints at waypoint 2, we will require
+    % equivalency between groups 1 and 2.
+    bgroup = pt - 1;
+    
+    % Extract the time at this particular waypoint
+    t = waypoints(pt).time;
         
-        % Determine H based on our two times.  Note: we have to add a
-        % slight offset to ensure that H is positive semidefinite.
+    % Loop through the derivatives
+    for deriv = 0:max(minderiv)
         
-        if isequal(minderiv,4)
-           numderiv = 4; 
-            if isequal(flat_out, 4) % Yaw
-                numderiv = 2;
+    % Determine our basis at this timestep and for this derivative
+    temp = basis(t,deriv,n,D);
+    
+        % Now loop through the dimensions
+        for idx = 1:d
+            
+            % We don't want to impose constraints on derivatives higher
+            % than or equal to what we are minimizing
+            if deriv < minderiv(idx)
+                
+                % The first basis group starts here
+                startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
+                C(row,startidx:startidx+n) = temp;
+                
+                % The second basis group starts (n+1)*d columns later
+                startidx = startidx + (n+1)*d;
+                C(row,startidx:startidx+n) = -temp; % Note the negative sign
+                
+                % Advance to the next row
+                row = row+1;
             end
-        elseif isequal(minderiv,0)
-            numderiv = 0;
         end
-        
-        %% The H matrix
+    end
+end
 
-        % Generate a matrix which represents the powers of H
+%% The H Matrix
+
+% Generate a matrix which represents the powers of H
         Hpow = Hpow_base-2*numderiv;
         
         % Determine the coefficients

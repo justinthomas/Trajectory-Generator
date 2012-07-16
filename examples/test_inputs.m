@@ -22,6 +22,9 @@ waypoints(2) = SetWaypoint(1,'pos',[0;nan;3;0]);
 
 waypoints(3) = ZeroWaypoint(3,ndim);
 waypoints(3).pos = [0;1;2;0];
+waypoints(3).vel = [0; 0; 0; 0];
+waypoints(3).acc = [0; 0; 0; NaN];
+waypoints(3).jerk = [0; 0; 0; NaN];
 
 
 % create a set of bounds
