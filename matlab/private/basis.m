@@ -18,7 +18,22 @@ end
 % undefined.
 powers = max(0,(n:-1:0)-deriv);
 
-% Our vector is simply
+% If t is a vector, we need to reshape things so that each time generates
+% a basis row.  This will create a 2-d matrix;
+if numel(t) > 1
+
+    % If t is a vector, then we want to generate a basis vector for each
+    % element of t
+    if size(t,1) > 1
+        t = repmat(t,[1 n+1]);
+    else
+        t = repmat(t',[1 n+1]);
+    end
+    
+    powers = repmat(powers, [size(t,1), 1]);
+    coeffs = repmat(coeffs, [size(t,1),1]);
+end
+
 vec = coeffs.*(t.^powers);
 
 end
