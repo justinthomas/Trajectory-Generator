@@ -13,55 +13,85 @@ clc
 % addpath('./src/');
 
 d = 4;
-n = 9;
+n = 15;
 
-% create a sequence of waypoints
-waypoints(1) = ZeroWaypoint(0,d);
-waypoints(1).pos = [1;0;2; 0];
-% waypoints(1).pos = 1;
+t = [0 2 5 8];
 
-waypoints(2) = SetWaypoint(1,'pos',[0;nan;3;0]);
-% waypoints(2) = SetWaypoint(1,'pos',2);
-% waypoints(2) = SetWaypoint(1,'vel',2);
+% Sample gripper properties
+dbeta_max = 2;
+L = .15;
 
-waypoints(3) = ZeroWaypoint(3,d);
-waypoints(3).pos = [0;1;2;0];
-waypoints(3).vel = [0; 0; 0; 0];
-waypoints(3).acc = [0; 0; 0; NaN];
-waypoints(3).jerk = [0; 0; 0; NaN];
+if isequal(d, 4)
+    
+    % create a sequence of waypoints
+    waypoints(1) = ZeroWaypoint(t(1),d);
+    waypoints(1).pos = [nan; 0; 2; (pi/2)*8/10];
+    
+    waypoints(2) = SetWaypoint(t(2),'pos',[0 0 0 0]);
+    waypoints(2).vel = [dbeta_max/2*L; nan; 0; -dbeta_max/2];
+    
+    waypoints(3) = SetWaypoint(t(3),'pos',[1; nan; 2; nan]);
+    
+    waypoints(4) = ZeroWaypoint(t(end),d);
+    waypoints(4).pos = [nan; nan; 2; 0];
+    
+    
+    % create a set of bounds
+    bounds(1) = SetBound([],'pos','ub',[2; 2; 2.5; pi/2]);
+    bounds(2) = SetBound([],'pos','lb',[-2; -2; 0; -pi/5]);
+%     bounds(3) = SetBound([],'vel','ub',[nan; nan; nan; dbeta_max]);
+%     bounds(4) = SetBound([],'vel','lb',[nan; nan; nan; -dbeta_max]);
 
-
-% create a set of bounds
-bounds(1) = SetBound([],'pos','lb',[-.3,-2,0,nan]);
-bounds(2) = SetBound([0,1],'pos','ub',[2,2,4,nan]);
-bounds(3) = SetBound([1.5, 3], 'vel', 'ub', [nan, .3, nan, nan]);
-
-
-% bounds(1) = SetBound([1 2],'pos','ub',2);
-% bounds(2) = SetBound([.5 1],'pos','lb',1.2);
+    minderiv = [4 4 4 4];
+    
+elseif isequal(d,1)
+    
+    waypoints(1) = ZeroWaypoint(t(1),d);
+    waypoints(1).pos = nan;
+    
+    waypoints(2) = SetWaypoint(t(2),'pos',0);
+    waypoints(2).vel = dbeta_max*L;
+    
+    waypoints(3) = SetWaypoint(t(3),'vel',1);
+    
+    waypoints(4) = ZeroWaypoint(t(end),d);
+    waypoints(4).pos = nan;
+    
+    bounds(1) = SetBound([],'pos','ub',2);
+    bounds(2) = SetBound([],'pos','lb',-2);
+    
+    minderiv = 4;
+    
+end
 
 % bounds = [];
 
-options = {'ndim',d,'polyorder', n,'minderiv', [4 4 4 2]};
+options = {'ndim',d,'polyorder', n,'minderiv', minderiv};
 
 % call the trajectory function
 tic
-[trajectory problem] = trajgen(waypoints,options, bounds, options);
+[traj problem] = trajgen(waypoints,options, bounds, options);
 toc
 
-
-colors = distinguishable_colors(length(waypoints)-1);
+N = length(waypoints)-1;
+colors = distinguishable_colors(2*N);
 figure
 set(gcf, 'Position', [1, 57, 1280, 945]);
 for didx = 1:d
-    subplot(2,2,didx)
+    if d>2
+        subplot(2,2,didx)
+    end
+    
     hold on
     title(sprintf('Dimension: %d', didx));
     
-    for seg = 1:(length(waypoints)-1)
-        t = waypoints(seg).time:.01:waypoints(seg+1).time;
-        rows = ((didx-1) + d*(seg - 1))*(n+1) + 1;
-        plot(t, polyval(trajectory(rows:(rows+n)),t), 'Color', colors(seg,:), 'LineWidth', 3)
+    for seg = 1:N
+        t = 0:.01:(waypoints(seg+1).time - waypoints(seg).time);
+        plot(t+waypoints(seg).time, polyval(traj(:,didx,seg),t), 'Color', colors(seg,:), 'LineWidth', 5);
+        plot(t+waypoints(seg).time,...
+            polyval(polyder(traj(:,didx,seg)),t), 'Color',colors(seg,:), 'LineWidth',2);
+%         plot(t+waypoints(seg).time,...
+%             polyval(polyder(polyder(polyder(traj(:,didx,seg)))),t), 'Color',colors(seg,:), 'LineWidth',1);
     end
     
 end

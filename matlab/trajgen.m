@@ -9,7 +9,7 @@ ticker = tic; %#ok<NASGU>
 %% Defaults
 
 numerical = true;            % Use quadprog
-n = 10;      % Polynomial order
+n = 9;      % Polynomial order
 constraints_per_seg = 10;   % Number of inequality constraints to enforce per segment
 
 %% Process varargin
@@ -40,6 +40,7 @@ end
 N = size(waypoints,2) - 1;
 
 keytimes = [waypoints.time]; % Keytimes
+durations = diff(keytimes);
 
 %% Generate our linear differential operator
 
@@ -75,12 +76,16 @@ for pt = 1:N+1
     % simply the difference of the total columns in the row and the already
     % occupied columns.
     
-    % Extract the time
-    t = waypoints(pt).time;
-    
     % We need to make the last waypoint fall on the end of the last
     % segment, not the beginning of the next segment.
     bgroup = min(pt,N);
+    
+    % Determine the time duration of the segment
+    dt = durations(bgroup);
+    
+    % We want to scale the time so that each segment is parametrized by t = 0:1.
+    % Then, at the beginning of each segment, t = 0, and at the end, t = 1.
+    t = pt - bgroup;
     
     % Now, establish the constraints
     if ~isempty(waypoints(pt).pos)
@@ -103,7 +108,7 @@ for pt = 1:N+1
             if ~isnan(waypoints(pt).vel(idx)) && (deriv < minderiv(idx))
                 startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
                 E(row,startidx:startidx+n) = temp;
-                Ebeq(row) = waypoints(pt).vel(idx);
+                Ebeq(row) = waypoints(pt).vel(idx)*dt;
                 row = row+1;
             end
         end
@@ -116,7 +121,7 @@ for pt = 1:N+1
             if ~isnan(waypoints(pt).acc(idx)) && (deriv < minderiv(idx))
                 startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
                 E(row,startidx:startidx+n) = temp;
-                Ebeq(row) = waypoints(pt).acc(idx);
+                Ebeq(row) = waypoints(pt).acc(idx)*dt^2;
                 row = row+1;
             end
         end
@@ -129,7 +134,7 @@ for pt = 1:N+1
             if ~isnan(waypoints(pt).jerk(idx)) && (deriv < minderiv(idx))
                 startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
                 E(row,startidx:startidx+n) = temp;
-                Ebeq(row) = waypoints(pt).jerk(idx);
+                Ebeq(row) = waypoints(pt).jerk(idx)*dt^3;
                 row = row+1;
             end
         end
@@ -168,14 +173,23 @@ for pt = 2:N
     % equivalency between groups 1 and 2.
     bgroup = pt - 1;
     
-    % Extract the time at this particular waypoint
-    t = waypoints(pt).time;
+    % Extract the durations of the two segments
+    dt1 = durations(bgroup);
+    dt2 = durations(bgroup + 1);
     
     % Loop through the derivatives
-    for deriv = 0:max(minderiv)
+    for deriv = 0:(max(minderiv)-1)
         
-        % Determine our basis at this timestep and for this derivative
-        temp = basis(t,deriv,n,D);
+        % Determine our bases at this timestep and for this derivative
+        % basis1 corresponds to the end of the first segment and basis0
+        % corresponds to the beginning of the next segment
+        basis1 = basis(1, deriv, n, D);
+        basis0 = basis(0, deriv, n, D);
+        
+        % Since we can't scale our constraints, we need to scale our bases
+        % since they are on different timescalXes
+        basis1 = basis1/(dt1^(deriv));
+        basis0 = basis0/(dt2^(deriv));
         
         % Now loop through the dimensions
         for idx = 1:d
@@ -186,14 +200,16 @@ for pt = 2:N
                 
                 % The first basis group starts here
                 startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
-                C(row,startidx:startidx+n) = temp;
+                C(row,startidx:startidx+n) = basis1;
                 
                 % The second basis group starts (n+1)*d columns later
                 startidx = startidx + (n+1)*d;
-                C(row,startidx:startidx+n) = -temp; % Note the negative sign
+                C(row,startidx:startidx+n) = -basis0; % Note the negative sign
                 
                 % Advance to the next row
                 row = row+1;
+            else
+                keyboard
             end
         end
     end
@@ -225,7 +241,7 @@ for seg = 1:N
 
         % Determine the coefficients
         if ~isequal(minderiv(idx),0)
-            Hcoeffs = sum(D{minderiv(idx)})';
+            Hcoeffs = (sum(D{minderiv(idx)}).')./(durations(seg).^minderiv(idx));
             Hcoeffs = Hcoeffs*Hcoeffs';
         else
             Hcoeffs = ones(n+1);
@@ -240,7 +256,7 @@ for seg = 1:N
         Hpow(Hpow < 0) = 0;
         
         % And store this block in H
-        H(rows,rows) = Hcoeffs.*(keytimes(seg+1).^Hpow) - Hcoeffs.*(keytimes(seg).^Hpow);
+        H(rows,rows) = Hcoeffs.*(1.^Hpow);
         
         % Now increment to the next diagonal block
         rows = rows + (n+1);
@@ -311,6 +327,9 @@ while (1)
     nrows = nrows + length(t)*ndim;
 end
 
+% The powers which we divide the basis by to scale it to the full scale
+tpow = (n:-1:0);
+
 % Initalize Aineq and bineq
 Aineq = zeros(nrows,N*(n+1)*d);
 bineq = zeros(nrows,1);
@@ -321,11 +340,20 @@ rows = 0;
 % Loop through the bounds
 for bidx = 1:length(bounds)
 
+%     if isequal(bounds(bidx).deriv,1); keyboard; end;
+    
+    % The times will be
+    t = bounds(bidx).time - bounds(bidx).time(1);
+
     % Now, bounds(bidx).time is a vector of times when we wish to enforce
     % the constraint.  So, we willl generate a basis for each time and use
     % the basis block where we need it.  It will have dimensions of
     % length(t) by (n+1) where t is the time vector for this bound
-    basis_block = basis(bounds(bidx).time, bounds(bidx).deriv, n, D);
+    basis_block = basis(t, bounds(bidx).deriv, n, D);
+
+    % Now scale it so the constraints are in the correct space (not
+    % nondimensionalized)
+    basis_block = basis_block./repmat(durations(bounds(bidx).seg).^tpow,[length(t), 1]);
     
     % idx indexes d, bgroup indexes the segment
     bgroup = bounds(bidx).seg;
@@ -362,8 +390,35 @@ for bidx = 1:length(bounds)
             end
             
         case '1norm'
+            % This is in progress, but I don't wan't to waste too much time
+            % on this right now
             
-        case '2norm'
+%             % NaN constraints also imply 0 weighting
+%             bounds(bidx).arg(isnan(bounds(bidx).arg)) = 0;
+%             
+%             % Which are the non-zero weightings?
+%             d_logical_idx = ~isequal(0,bounds(bidx).arg);
+%             nonzero_d = sum(d_logical_idx);
+%             
+%             % Determine the rows which our basis_block will occupy
+%             rows = (rows(end) + 1):(rows(end) + (2^nonzero_d)*size(basis_block,1));
+%             
+%             % Determine the column which the basis blocks will start
+%             idx = 1;
+%             startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
+%             
+%             % Determine the sign of the bound
+%             if isequal(bounds(bidx).type, 'ub')
+%                 s = 1;
+%             elseif isequal(bounds(bidx).type, 'lb')
+%                 s = -1;
+%             end
+%             
+%             % The basis block will end n columns later
+%             Aineq(rows, startidx:(startidx + n)) = s*basis_block;
+%             
+%             % And save the bound in bineq
+%             bineq(rows) = s*bounds(bidx).arg(idx);
             
         case 'infnorm'
             
@@ -386,40 +441,40 @@ if ~numerical
         problem.Aeq, zeros(size(problem.Aeq,1)')];
     
     % Analytic Solution
-    out = temp\[zeros(n+1,1); problem.beq];
+    x = temp\[zeros(n+1,1); problem.beq];
     if any(isnan(out)); keyboard; end;  %#### Remove this at some point!
 %     coeffs{flat_out,seg} = out(1:n+1);
     
 else
     % Set up the problem
-    problem.options = optimset('MaxIter',1000,'Display','on');
+    problem.options = optimset('MaxIter',1000,'Display','on','Algorithm','active-set');
     problem.solver = 'quadprog';
 
     % Numerical Solution
     ticker2 = tic;
-    [x, fval, exitflag] = quadprog(problem);
+    x = quadprog(problem);
     toc(ticker2)
-    
-    switch exitflag
-        case 1
-            fprintf('Solution found\n');
-        case 0
-            fprintf('Exceeded options.MaxIter\n');
-        case -2
-            fprintf('Problem is infeasible\n');
-        case -3
-            fprintf('Problem is unbounded\n');
-        case 4
-            fprintf('Local minimizer was found\n');
-        case -7
-            fprintf('Magnitude of search direction became too small\n');
-    end
 end
 
-% How much time has elapsed?
-% toc(ticker)
+%% Package the solution
+% The first dimension will index the polynomial coefficients
+% The second dimension will index the dimension (e.g. x, y, z, psi, ...)
+% The third dimension will index the segment
 
-% Just return coeffs_vec for now
-traj = x;
+traj = zeros(n+1, d, N);
+traj(:) = x;
+
+%% Unnormalize the coefficients
+
+% To scale the bases, we will need the powers of the segment
+% duration
+tpow = (n:-1:0)';
+
+for seg = 1:N
+    
+    t = durations(seg);
+    traj(:,:,seg) = traj(:,:,seg)./repmat((t.^tpow),[1 d]);
+    
+end
 
 end
