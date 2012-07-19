@@ -28,7 +28,7 @@ if isequal(d, 4)
     waypoints(1).pos = [nan; 0; 2; (pi/2)*8/10];
     
     waypoints(2) = SetWaypoint(t(2),'pos',[0 0 0 0]);
-    waypoints(2).vel = [dbeta_max/2*L; nan; 0; -dbeta_max/2];
+    waypoints(2).vel = [dbeta_max/2*L; nan; 0; -dbeta_max];
     
     waypoints(3) = SetWaypoint(t(3),'pos',[1; nan; 2; nan]);
     
@@ -39,8 +39,8 @@ if isequal(d, 4)
     % create a set of bounds
     bounds(1) = SetBound([],'pos','ub',[2; 2; 2.5; pi/2]);
     bounds(2) = SetBound([],'pos','lb',[-2; -2; 0; -pi/5]);
-%     bounds(3) = SetBound([],'vel','ub',[nan; nan; nan; dbeta_max]);
-%     bounds(4) = SetBound([],'vel','lb',[nan; nan; nan; -dbeta_max]);
+    bounds(3) = SetBound([],'vel','ub',[nan; nan; nan; dbeta_max]);
+    bounds(4) = SetBound([],'vel','lb',[nan; nan; nan; -dbeta_max]);
 
     minderiv = [4 4 4 4];
     
@@ -87,9 +87,9 @@ for didx = 1:d
     
     for seg = 1:N
         t = 0:.01:(waypoints(seg+1).time - waypoints(seg).time);
-        plot(t+waypoints(seg).time, polyval(traj(:,didx,seg),t), 'Color', colors(seg,:), 'LineWidth', 5);
-        plot(t+waypoints(seg).time,...
-            polyval(polyder(traj(:,didx,seg)),t), 'Color',colors(seg,:), 'LineWidth',2);
+        plot(t+waypoints(seg).time, polyval(traj(:,didx,seg),t), 'Color', colors(seg,:), 'LineWidth', 4);
+%         plot(t+waypoints(seg).time,...
+%             polyval(polyder(traj(:,didx,seg)),t), 'Color',colors(seg,:), 'LineWidth',2);
 %         plot(t+waypoints(seg).time,...
 %             polyval(polyder(polyder(polyder(traj(:,didx,seg)))),t), 'Color',colors(seg,:), 'LineWidth',1);
     end

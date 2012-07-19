@@ -234,14 +234,14 @@ rows = 1:(n+1);
 for seg = 1:N
     
     % Loop through the dimensions
-    for idx = 1:d
+    for dim = 1:d
         
         % Generate a matrix which represents the powers of H
-        Hpow = Hpow_base-2*minderiv(idx);
+        Hpow = Hpow_base-2*minderiv(dim);
 
         % Determine the coefficients
-        if ~isequal(minderiv(idx),0)
-            Hcoeffs = (sum(D{minderiv(idx)}).')./(durations(seg).^minderiv(idx));
+        if ~isequal(minderiv(dim),0)
+            Hcoeffs = (sum(D{minderiv(dim)}).')./(durations(seg).^minderiv(dim));
             Hcoeffs = Hcoeffs*Hcoeffs';
         else
             Hcoeffs = ones(n+1);
@@ -256,7 +256,7 @@ for seg = 1:N
         Hpow(Hpow < 0) = 0;
         
         % And store this block in H
-        H(rows,rows) = Hcoeffs.*(1.^Hpow);
+        H(rows,rows) = Hcoeffs.*(durations(seg).^Hpow);
         
         % Now increment to the next diagonal block
         rows = rows + (n+1);
