@@ -42,7 +42,7 @@ if isequal(d, 4)
     bounds(3) = SetBound([],'vel','ub',[nan; nan; nan; dbeta_max]);
     bounds(4) = SetBound([],'vel','lb',[nan; nan; nan; -dbeta_max]);
 
-    minderiv = [4 4 4 4];
+    minderiv = [4 4 4 2];
     
 elseif isequal(d,1)
     
@@ -70,7 +70,7 @@ options = {'ndim',d,'polyorder', n,'minderiv', minderiv};
 
 % call the trajectory function
 tic
-[traj problem] = trajgen(waypoints,options, bounds, options);
+[traj problem] = trajgen(waypoints,options, bounds);
 toc
 
 N = length(waypoints)-1;
@@ -88,8 +88,8 @@ for didx = 1:d
     for seg = 1:N
         t = 0:.01:(waypoints(seg+1).time - waypoints(seg).time);
         plot(t+waypoints(seg).time, polyval(traj(:,didx,seg),t), 'Color', colors(seg,:), 'LineWidth', 4);
-%         plot(t+waypoints(seg).time,...
-%             polyval(polyder(traj(:,didx,seg)),t), 'Color',colors(seg,:), 'LineWidth',2);
+        plot(t+waypoints(seg).time,...
+            polyval(polyder(traj(:,didx,seg)),t), 'Color',colors(seg,:), 'LineWidth',2);
 %         plot(t+waypoints(seg).time,...
 %             polyval(polyder(polyder(polyder(traj(:,didx,seg)))),t), 'Color',colors(seg,:), 'LineWidth',1);
     end

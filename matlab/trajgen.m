@@ -1,4 +1,4 @@
-function [traj problem] = trajgen(waypoints, options, bounds, varargin)
+function [traj problem] = trajgen(waypoints, options, bounds)
 % function traj = trajgen(waypoints, options, bounds, varargin)
 %
 % A more detailed explanation of this program will go here
@@ -6,11 +6,23 @@ function [traj problem] = trajgen(waypoints, options, bounds, varargin)
 warning off MATLAB:nearlySingularMatrix
 ticker = tic; %#ok<NASGU>
 
+% Initalize return variables
+traj = [];
+problem = [];
+
 %% Defaults
 
-numerical = true;            % Use quadprog
-n = 9;      % Polynomial order
-constraints_per_seg = 10;   % Number of inequality constraints to enforce per segment
+if nargin < 3 || isempty(bounds)
+    % Use the analytical solver
+    bounds = [];
+    numerical = false;
+else
+    % Use a numerical solver
+    numerical = true;
+end
+
+n = 15;      % Polynomial order
+constraints_per_seg = 2*(n+1);   % Number of inequality constraints to enforce per segment
 
 %% Process varargin
 for idx = 1:2:length(options)
@@ -29,10 +41,12 @@ for idx = 1:2:length(options)
             % The number of dimensions we have.
             % For example, for a typical quadrotor, we have 4: x,y,z,psi
             d = options{idx+1};
-            if d <= 0;  warning('Do you really want a <= 0 dimensional system?'); end %#ok<WNTAG>
+            if d <= 0;
+                warning('Do you really want a <= 0 dimensional system?');  %#ok<WNTAG>
+                return;
+            end
     end
 end
-
 
 %% Keytimes, Segments
 
@@ -188,8 +202,8 @@ for pt = 2:N
         
         % Since we can't scale our constraints, we need to scale our bases
         % since they are on different timescalXes
-        basis1 = basis1/(dt1^(deriv));
-        basis0 = basis0/(dt2^(deriv));
+        basis1 = basis1./(dt1^(deriv));
+        basis0 = basis0./(dt2^(deriv));
         
         % Now loop through the dimensions
         for idx = 1:d
@@ -208,8 +222,6 @@ for pt = 2:N
                 
                 % Advance to the next row
                 row = row+1;
-            else
-                keyboard
             end
         end
     end
@@ -218,7 +230,7 @@ end
 %% The H Matrix
 
 % Initalize H
-H = zeros((N)*d*(n+1));
+H = zeros(N*d*(n+1));
 
 % Determine the powers
 powers = (n:-1:0)';
@@ -260,6 +272,7 @@ for seg = 1:N
         
         % Now increment to the next diagonal block
         rows = rows + (n+1);
+
     end
 end
 
@@ -343,7 +356,7 @@ for bidx = 1:length(bounds)
 %     if isequal(bounds(bidx).deriv,1); keyboard; end;
     
     % The times will be
-    t = bounds(bidx).time - bounds(bidx).time(1);
+    t = bounds(bidx).time - waypoints(bounds(bidx).seg).time;
 
     % Now, bounds(bidx).time is a vector of times when we wish to enforce
     % the constraint.  So, we willl generate a basis for each time and use
@@ -441,13 +454,14 @@ if ~numerical
         problem.Aeq, zeros(size(problem.Aeq,1)')];
     
     % Analytic Solution
-    x = temp\[zeros(n+1,1); problem.beq];
-    if any(isnan(out)); keyboard; end;  %#### Remove this at some point!
-%     coeffs{flat_out,seg} = out(1:n+1);
+    x = temp\[zeros(size(temp,1)-length(problem.beq),1); problem.beq];
+    
+    % Now, extract the coefficients
+    x = x(1:size(problem.H));
     
 else
     % Set up the problem
-    problem.options = optimset('MaxIter',1000,'Display','on','Algorithm','active-set');
+    problem.options = optimset('MaxIter',1500,'Display','on','Algorithm','active-set');
     problem.solver = 'quadprog';
 
     % Numerical Solution
