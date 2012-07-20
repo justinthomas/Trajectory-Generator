@@ -1,4 +1,4 @@
-function [traj problem] = trajgen(waypoints, options, bounds)
+function [traj durations problem] = trajgen(waypoints, options, bounds)
 % function traj = trajgen(waypoints, options, bounds, varargin)
 %
 % A more detailed explanation of this program will go here
@@ -475,8 +475,11 @@ end
 % The second dimension will index the dimension (e.g. x, y, z, psi, ...)
 % The third dimension will index the segment
 
-traj = zeros(n+1, d, N);
-traj(:) = x;
+traj.poly = zeros(n+1, d, N);
+traj.poly(:) = x;
+
+traj.durations = durations;
+traj.t = keytimes;
 
 %% Unnormalize the coefficients
 
@@ -487,8 +490,7 @@ tpow = (n:-1:0)';
 for seg = 1:N
     
     t = durations(seg);
-    traj(:,:,seg) = traj(:,:,seg)./repmat((t.^tpow),[1 d]);
+    traj.poly(:,:,seg) = traj(:,:,seg)./repmat((t.^tpow),[1 d]);
     
 end
-
 end

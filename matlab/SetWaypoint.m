@@ -1,4 +1,9 @@
-function waypoint = SetWaypoint(time,varargin)
+function waypoint = SetWaypoint(time, varargin)
+% waypoint = SetWaypoint(time, varargin)
+
+% varargin can be pos, vel, acc, or jerk.  They must be followed by a
+% vector specifying the equality constraints.  Note: NaNs are permitted and
+% denote no constraint.
 
 % allowed inputs are:
 inputs = {'pos','vel','acc','jerk'};
@@ -12,7 +17,6 @@ waypoint = struct('time',nan,temp{:});
 
 %always require time
 waypoint.time = time;
-
 
 % loop through each input arg and check if it is a valid  input
 for idx = 1:length(varargin)
