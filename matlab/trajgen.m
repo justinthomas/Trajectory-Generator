@@ -474,12 +474,14 @@ end
 % The first dimension will index the polynomial coefficients
 % The second dimension will index the dimension (e.g. x, y, z, psi, ...)
 % The third dimension will index the segment
-
+% The fourth dimension will index the derivative.  
+% So, traj.poly(:, b, c, d) will return the polynomial defining the b^th
+% dimension, the c^th segment, and the (d-1)^th derivative.
 traj.poly = zeros(n+1, d, N);
 traj.poly(:) = x;
 
 traj.durations = durations;
-traj.t = keytimes;
+traj.times = keytimes;
 
 %% Unnormalize the coefficients
 
@@ -489,8 +491,15 @@ tpow = (n:-1:0)';
 
 for seg = 1:N
     
+    % Renormalize the segments
     t = durations(seg);
-    traj.poly(:,:,seg) = traj(:,:,seg)./repmat((t.^tpow),[1 d]);
+    traj.poly(:,:,seg) = traj.poly(:,:,seg)./repmat((t.^tpow),[1 d]);
+    
+    % Differentiate the polynomials
+    for deriv = 1:max(minderiv)
+        traj.poly(:,:,seg,deriv+1) = D{deriv}*traj.poly(:,:,seg, 1);
+    end
     
 end
+
 end
