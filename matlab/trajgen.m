@@ -481,7 +481,7 @@ traj.poly = zeros(n+1, d, N);
 traj.poly(:) = x;
 
 traj.durations = durations;
-traj.times = keytimes;
+traj.keytimes = keytimes;
 
 %% Unnormalize the coefficients
 

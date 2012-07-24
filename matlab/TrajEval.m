@@ -31,13 +31,13 @@ val = zeros(deriv + 1, d, length(t));
 for idx = 1:length(t)
     
     % Determine the segment
-    seg = find(traj.times <= t(idx), 1, 'last');
+    seg = find(traj.keytimes <= t(idx), 1, 'last');
     
-    % This will only affect seg when t = traj.times(end)
+    % This will only affect seg when t = traj.keytimes(end)
     seg = min(seg,N);
     
     % Generate our basis
-    basis = (t(idx)-traj.times(seg)).^(n:-1:0);
+    basis = (t(idx)-traj.keytimes(seg)).^(n:-1:0);
     
     % Make it the right size
     basis_block = repmat(basis', [1, d, 1, deriv + 1]);
