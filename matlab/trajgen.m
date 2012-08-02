@@ -21,7 +21,7 @@ else
     numerical = true;
 end
 
-n = 15;      % Polynomial order
+n = 12;      % Polynomial order
 constraints_per_seg = 2*(n+1);   % Number of inequality constraints to enforce per segment
 
 %% Process varargin
