@@ -1,7 +1,11 @@
-function output = NanWaypoint(time)
+function output = NanWaypoint(time, num_dimensions)
 
 if nargin<1
     time = nan;
 end
 
-output = struct('time',{time},'pos',{[nan;nan;nan]},'vel',{[nan;nan;nan]},'acc',{[nan;nan;nan]},'jerk',{[nan;nan;nan]},'psi',{[nan;nan;nan]});
+temp = NaN(num_dimensions,1);
+
+output = struct('time',{time},'pos',{temp},'vel',{temp},'acc',{temp},'jerk',{temp});
+
+end
