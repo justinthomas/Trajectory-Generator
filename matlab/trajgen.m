@@ -21,7 +21,7 @@ else
     numerical = true;
 end
 
-n = 15;      % Polynomial order
+n = 12;      % Polynomial order
 constraints_per_seg = 2*(n+1);   % Number of inequality constraints to enforce per segment
 
 %% Process varargin
@@ -45,6 +45,8 @@ for idx = 1:2:length(options)
                 warning('Do you really want a <= 0 dimensional system?');  %#ok<WNTAG>
                 return;
             end
+        case 'constraints_per_seg' % #### This should be a shorter argument...
+            constraints_per_seg = options{idx+1};
     end
 end
 
