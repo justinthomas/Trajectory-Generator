@@ -14,20 +14,25 @@
 
 void trajgen(mxArray *traj, mxArray *waypoints, mxArray *bounds, mxArray *options)
 {
-  int n = 10, d = 1, idx;
-  float t = 2;
-  float *basis;
+  //int n = 10, d = 1, idx;
+  //float t = 2;
+  //float *basis;
   
-  basis = basisgen(n,d,t);
+  float temp[3];
+
+  //basis = basisgen(n,d,t);
 
   //Print the results
-  mexPrintf("The basis for a %dth order polynomial differentiated %d time(s) and evaluated at t = %f:\n",n,d,t);
+  //mexPrintf("The basis for a %dth order polynomial differentiated %d time(s) and evaluated at t = %f:\n",n,d,t);
+  temp = mxGetField(waypoints, 1, "pos");
 
-  for(idx=0; idx<(n+1); idx++)
-    mexPrintf("%4.2f\n",basis[idx]);
+  mexPrintf("The struct waypoints(1).pos(1): %f\n", temp);
+
+  //for(idx=0; idx<(n+1); idx++)
+  //  mexPrintf("%4.2f\n",basis[idx]);
 
   // Free the memory
-  free(basis);
+  //free(basis);
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
