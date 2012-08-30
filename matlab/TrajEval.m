@@ -42,6 +42,10 @@ for idx = 1:length(t)
     % Make it the right size
     basis_block = repmat(basis', [1, d, 1, deriv + 1]);
     
+    % Can I eliminate the repmat above? ####
+%     a = bsxfun(@times, traj.poly(:,:,seg,:), basis');
+%     a(end,:,seg,:)
+    
     % And evaluate the trajectory
     eval = sum(traj.poly(:,:,seg,:).*basis_block, 1);
     
