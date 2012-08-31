@@ -39,17 +39,19 @@ for idx = 1:length(t)
     % Generate our basis
     basis = (t(idx)-traj.keytimes(seg)).^(n:-1:0);
     
-    % Make it the right size
-    basis_block = repmat(basis', [1, d, 1, deriv + 1]);
+    % The old way:
     
-    % Can I eliminate the repmat above? ####
-%     a = bsxfun(@times, traj.poly(:,:,seg,:), basis');
-%     a(end,:,seg,:)
+    % % Make it the right size
+    % basis_block = repmat(basis', [1, d, 1, deriv + 1]);
+    %
+    % % And evaluate the trajectory
+    % eval = sum(traj.poly(:,:,seg,:).*basis_block, 1);
     
-    % And evaluate the trajectory
-    eval = sum(traj.poly(:,:,seg,:).*basis_block, 1);
-    
-    % Now store the derivative values in the rows, the dimensions in the
+    % The faster way
+    temp = bsxfun(@times, traj.poly(:,:,seg,:), basis');
+    eval = sum(temp(:,:,1,:),1);
+
+    %% Now store the derivative values in the rows, the dimensions in the
     % columns, and the time index as the depth
     val(:,:,idx) = permute(eval(1,:,1,:),[4, 2, 3, 1]);
     
