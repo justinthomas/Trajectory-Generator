@@ -471,7 +471,8 @@ else
 
         ticker2 = tic;
         x = cplexqp(problem);
-        toc(ticker2)
+        temp = toc(ticker2);
+        fprintf('CPLEX solve time: %2.3f seconds\n', temp);
         
     else
         
@@ -482,7 +483,8 @@ else
         % Numerical Solution
         ticker2 = tic;
         x = quadprog(problem);
-        toc(ticker2)
+        temp = toc(ticker2);
+        fprintf('QuadProg solve time: %2.3f seconds\n', temp);
     end
     
 end
