@@ -462,14 +462,29 @@ if ~numerical
     x = x(1:size(problem.H));
     
 else
-    % Set up the problem
-    problem.options = optimset('MaxIter',1500,'Display','on','Algorithm','active-set');
-    problem.solver = 'quadprog';
+    
+    % If we have the cplex solvers in our path, use them.  Otherwise, we
+    % will default to MATLAB's optimization toolbox and use quadprog.
+    if exist('cplexqp.p', 'file')
+        
+        problem.f = zeros(size(H,2),1);
 
-    % Numerical Solution
-    ticker2 = tic;
-    x = quadprog(problem);
-    toc(ticker2)
+        ticker2 = tic;
+        x = cplexqp(problem);
+        toc(ticker2)
+        
+    else
+        
+        % Set up the problem
+        problem.options = optimset('MaxIter',1500,'Display','on','Algorithm','active-set');
+        problem.solver = 'quadprog';
+
+        % Numerical Solution
+        ticker2 = tic;
+        x = quadprog(problem);
+        toc(ticker2)
+    end
+    
 end
 
 %% Package the solution
