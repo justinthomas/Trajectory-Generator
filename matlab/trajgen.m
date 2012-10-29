@@ -28,7 +28,7 @@ constraints_per_seg = 2*(n+1);   % Number of inequality constraints to enforce p
 for idx = 1:2:length(options)
     
     switch options{idx}
-        case 'polyorder'
+        case 'order'
             n = options{idx+1};
         case 'minderiv'
             % What derivative are we minimizing
@@ -47,6 +47,8 @@ for idx = 1:2:length(options)
             end
         case 'constraints_per_seg' % #### This should be a shorter argument...
             constraints_per_seg = options{idx+1};
+        case 'numerical'
+            numerical = options{idx+1};
     end
 end
 
