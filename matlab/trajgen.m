@@ -1,5 +1,21 @@
-function [traj durations problem] = trajgen(waypoints, options, bounds)
+function [traj, durations, problem, exitflag] = trajgen(waypoints, options, bounds)
 % function traj = trajgen(waypoints, options, bounds, varargin)
+%
+% options is a cell array formatted {'parameter1', value1, 'parameter2', value2, ...}
+%
+% Available parameters:
+%   order (integer)
+%       Defines the order of polynomials to use
+%   minderiv (integral vector)
+%       Defines which derivative to minimize for each dimension
+%   constraints_per_seg (integer)
+%       The number of constraints to place for a bound over each segment
+%   numerical (boolean)
+%       Use the numerical optimization?  Alternative is analytical, but
+%       can only be used if there are no bounds.
+%   convergetol (double)
+%       The tolerance between the primal and dual costs before calling the
+%       solution optimal.
 %
 % A more detailed explanation of this program will go here
 
@@ -23,6 +39,7 @@ end
 
 n = 12;      % Polynomial order
 constraints_per_seg = 2*(n+1);   % Number of inequality constraints to enforce per segment
+convergetol = 1e-08;    % Tolernce
 
 %% Process varargin
 for idx = 1:2:length(options)
@@ -49,6 +66,8 @@ for idx = 1:2:length(options)
             constraints_per_seg = options{idx+1};
         case 'numerical'
             numerical = options{idx+1};
+        case 'convergetol'
+            convergetol = options{idx+1};
     end
 end
 
@@ -470,9 +489,12 @@ else
     if exist('cplexqp.p', 'file')
         
         problem.f = zeros(size(H,2),1);
+        problem.options = cplexoptimset('cplex');
+        % If primal obj and dual obj are this close, the solution is considered optimal
+        problem.options.barrier.convergetol = convergetol;
 
         ticker2 = tic;
-        x = cplexqp(problem);
+        [x, fval, exitflag, output] = cplexqp(problem); %#ok<NASGU,ASGLU>
         temp = toc(ticker2);
         fprintf('CPLEX solve time: %2.3f seconds\n', temp);
         
@@ -484,7 +506,7 @@ else
 
         % Numerical Solution
         ticker2 = tic;
-        x = quadprog(problem);
+        [x, fval, exitflag, output] = quadprog(problem); %#ok<NASGU,ASGLU>
         temp = toc(ticker2);
         fprintf('QuadProg solve time: %2.3f seconds\n', temp);
     end
