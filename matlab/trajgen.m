@@ -3,10 +3,10 @@ function [traj, durations, problem, exitflag] = trajgen(waypoints, options, boun
 %
 % options is a cell array formatted {'parameter1', value1, 'parameter2', value2, ...}
 %
-% Available parameters:
+% Available parameters for the options cell array:
 %   order (integer)
 %       Defines the order of polynomials to use
-%   minderiv (integral vector)
+%   minderiv (vector)
 %       Defines which derivative to minimize for each dimension
 %   constraints_per_seg (integer)
 %       The number of constraints to place for a bound over each segment
@@ -84,6 +84,14 @@ durations = diff(keytimes);
 D = differential_linear_operators(n);
 
 %% Equality constraints
+
+% This will make sure that all the waypoints are column vectors
+for idx = 1:length(waypoints)
+    waypoints(idx).pos = waypoints(idx).pos(:);
+    waypoints(idx).vel = waypoints(idx).vel(:);
+    waypoints(idx).acc = waypoints(idx).acc(:);
+    waypoints(idx).jerk = waypoints(idx).jerk(:);
+end
 
 % Determine the size of E for preallocation.  There will be a row for every
 % non-NaN and non-empty constraint.  This will also generate an error if
