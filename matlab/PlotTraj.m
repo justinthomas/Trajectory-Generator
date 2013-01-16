@@ -1,4 +1,4 @@
-function h = PlotTraj(traj)
+function [] = PlotTraj(traj)
 
 tstep = (traj.keytimes(end) - traj.keytimes(1))/100;
 tvec = traj.keytimes(1):tstep:traj.keytimes(end);
