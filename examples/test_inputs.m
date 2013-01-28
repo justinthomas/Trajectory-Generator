@@ -15,12 +15,6 @@ clc
 d = 1;
 n = 12;
 
-figure
-
-% Sample gripper properties
-dbeta_max = 2;
-L = .15;
-
 if isequal(d, 4)
     
     t = [0 2 5 8];
@@ -48,57 +42,57 @@ if isequal(d, 4)
     
 elseif isequal(d,1)
     
-    t = [0 5];
+    t = [0 5 10];
     
     waypoints(1) = ZeroWaypoint(t(1),d);
     waypoints(1).pos = 1;
     
-    waypoints(2) = ZeroWaypoint(t(end),d);
+    waypoints(2) = ZeroWaypoint(t(2),d);
     waypoints(2).pos = -1;
+    
+    waypoints(3) = ZeroWaypoint(t(3),d);
+    waypoints(3).pos = 1;
     
 %     bounds(1) = SetBound([],'pos','ub',2);
 %     bounds(2) = SetBound([],'pos','lb',-2);
     
-    bounds(1) = SetBound([1.5 2.5],'pos','ub',0-.1);
-    bounds(2) = SetBound([3 3.5],'pos', 'lb', 0+.1);
+%     bounds(1) = SetBound([1.5 2.5],'pos','ub',0-.1);
+%     bounds(2) = SetBound([3 3.5],'pos', 'lb', 0+.1);
     
     minderiv = 4;
     
 end
 
-% bounds = [];
+bounds = [];
 
 options = {'ndim',d,'polyorder', n,'minderiv', minderiv, 'constraints_per_seg', 20*(n+1)};
 
 % call the trajectory function
 tic
-[traj problem] = trajgen(waypoints,options, bounds);
+[traj problem] = trajgen(waypoints, options, bounds);
 toc
 
-N = length(waypoints)-1;
-colors = distinguishable_colors(2*N);
-
-set(gcf, 'Position', [1, 57, 1280, 945]);
-for didx = 1:d
-    if d>2
-        subplot(2,2,didx)
-    end
-    
-    hold on
-    title(sprintf('Dimension: %d', didx));
-    
-    for seg = 1:N
-        t = 0:.01:(waypoints(seg+1).time - waypoints(seg).time);
-        plot(t+waypoints(seg).time, polyval(traj.poly(:,didx,seg),t), 'Color', colors(seg,:), 'LineWidth', 4);
-%         plot(t+waypoints(seg).time,...
-%             polyval(polyder(traj.poly(:,didx,seg)),t), 'Color',colors(seg,:), 'LineWidth',2);
-%         plot(t+waypoints(seg).time,...
-%             polyval(polyder(polyder(polyder(traj(:,didx,seg)))),t), 'Color',colors(seg,:), 'LineWidth',1);
-    end
-    
-end
-
-if isequal(d,1)
-    patch([1.5 1.5 2.5 2.5]',[1.5, 0, 0, 1.5]', 'r')
-    patch([3 3 3.5 3.5]',[-1.5, 0, 0, -1.5]', 'r')
-end
+PlotTraj(traj)
+% 
+% N = length(waypoints)-1;
+% colors = distinguishable_colors(2*N);
+% 
+% set(gcf, 'Position', [1, 57, 1280, 945]);
+% for didx = 1:d
+%     if d>2
+%         subplot(2,2,didx)
+%     end
+%     
+%     hold on
+%     title(sprintf('Dimension: %d', didx));
+%     
+%     for seg = 1:N
+%         t = 0:.01:(waypoints(seg+1).time - waypoints(seg).time);
+%         plot(t+waypoints(seg).time, polyval(traj.poly(:,didx,seg),t), 'Color', colors(seg,:), 'LineWidth', 4);
+% %         plot(t+waypoints(seg).time,...
+% %             polyval(polyder(traj.poly(:,didx,seg)),t), 'Color',colors(seg,:), 'LineWidth',2);
+% %         plot(t+waypoints(seg).time,...
+% %             polyval(polyder(polyder(polyder(traj(:,didx,seg)))),t), 'Color',colors(seg,:), 'LineWidth',1);
+%     end
+%     
+% end
