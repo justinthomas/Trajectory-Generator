@@ -232,7 +232,7 @@ for pt = 2:N
         basis0 = basis(0, deriv, n, D);
         
         % Since we can't scale our constraints, we need to scale our bases
-        % since they are on different timescalXes
+        % since they are on different timescales
         basis1 = basis1./(dt1^(deriv));
         basis0 = basis0./(dt2^(deriv));
         
@@ -284,7 +284,7 @@ for seg = 1:N
 
         % Determine the coefficients
         if ~isequal(minderiv(dim),0)
-            Hcoeffs = (sum(D{minderiv(dim)}).')./(durations(seg).^minderiv(dim));
+            Hcoeffs = (sum(D{minderiv(dim)}).'); %./(durations(seg).^minderiv(dim))
             Hcoeffs = Hcoeffs*Hcoeffs';
         else
             Hcoeffs = ones(n+1);
@@ -299,7 +299,7 @@ for seg = 1:N
         Hpow(Hpow < 0) = 0;
         
         % And store this block in H
-        H(rows,rows) = Hcoeffs.*(durations(seg).^Hpow);
+        H(rows,rows) = Hcoeffs; %.*(durations(seg).^Hpow);
         
         % Now increment to the next diagonal block
         rows = rows + (n+1);

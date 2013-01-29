@@ -1,7 +1,7 @@
 % this function will be an example of the inputs to the trajectory
 % generation mex file
 
-clear all
+clear
 close all
 clc
 
@@ -42,34 +42,30 @@ if isequal(d, 4)
     
 elseif isequal(d,1)
     
-    t = [0 5 10];
+    t = [0 5 10]/10;
     
-    waypoints(1) = ZeroWaypoint(t(1),d);
+    waypoints(1) = NanWaypoint(t(1),d);
     waypoints(1).pos = 1;
+    waypoints(1).vel = 0;
     
-    waypoints(2) = ZeroWaypoint(t(2),d);
+    waypoints(2) = NanWaypoint(t(2),d);
     waypoints(2).pos = -1;
     
-    waypoints(3) = ZeroWaypoint(t(3),d);
+    waypoints(3) = NanWaypoint(t(3),d);
     waypoints(3).pos = 1;
+    waypoints(3).vel = 0;
     
-%     bounds(1) = SetBound([],'pos','ub',2);
-%     bounds(2) = SetBound([],'pos','lb',-2);
-    
-%     bounds(1) = SetBound([1.5 2.5],'pos','ub',0-.1);
-%     bounds(2) = SetBound([3 3.5],'pos', 'lb', 0+.1);
-    
-    minderiv = 4;
+    minderiv = 2;
     
 end
 
 bounds = [];
 
-options = {'ndim',d,'polyorder', n,'minderiv', minderiv, 'constraints_per_seg', 20*(n+1)};
+options = {'ndim',d,'order', n,'minderiv', minderiv, 'constraints_per_seg', 20*(n+1)};
 
 % call the trajectory function
 tic
-[traj problem] = trajgen(waypoints, options, bounds);
+[traj durations problem] = trajgen(waypoints, options, bounds);
 toc
 
 PlotTraj(traj)
