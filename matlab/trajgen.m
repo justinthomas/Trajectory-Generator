@@ -3,6 +3,10 @@ function [traj, durations, problem, exitflag] = trajgen(waypoints, options, boun
 %
 % options is a cell array formatted {'parameter1', value1, 'parameter2', value2, ...}
 %
+% Required parameters for the options cell array:
+%   ndim (iteger)
+%       The number of dimensions that will be planned for (should be equal
+%
 % Available parameters for the options cell array:
 %   order (integer)
 %       Defines the order of polynomials to use
@@ -53,15 +57,11 @@ for idx = 1:2:length(options)
             % minderiv = 2 corresponds to acceleration
             % minderiv = 0 corresponds to position
             minderiv = max(0,options{idx+1});
-            if max(minderiv)>4; warning('This program can only support up to 4 derivatives at this time.'); end; %#ok<WNTAG>
-        case 'ndim'
-            % The number of dimensions we have.
-            % For example, for a typical quadrotor, we have 4: x,y,z,psi
-            d = options{idx+1};
-            if d <= 0;
-                warning('Do you really want a <= 0 dimensional system?');  %#ok<WNTAG>
-                return;
-            end
+            if max(minderiv) > 4; warning('This program can only support up to 4 derivatives at this time.'); end; %#ok<WNTAG>
+            
+            % We can also determine the number of dimensions
+            d = length(minderiv);
+            
         case 'constraints_per_seg' % #### This should be a shorter argument...
             constraints_per_seg = options{idx+1};
         case 'numerical'
