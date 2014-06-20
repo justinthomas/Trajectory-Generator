@@ -3,10 +3,6 @@ function [traj, durations, problem, exitflag] = trajgen(waypoints, options, boun
 %
 % options is a cell array formatted {'parameter1', value1, 'parameter2', value2, ...}
 %
-% Required parameters for the options cell array:
-%   ndim (iteger)
-%       The number of dimensions that will be planned for (should be equal
-%
 % Available parameters for the options cell array:
 %   order (integer)
 %       Defines the order of polynomials to use
@@ -20,6 +16,19 @@ function [traj, durations, problem, exitflag] = trajgen(waypoints, options, boun
 %   convergetol (double)
 %       The tolerance between the primal and dual costs before calling the
 %       solution optimal.
+%   contderiv (vector)
+%       Similar to minderiv, but allows for a different level of required
+%       continunity constraints.  For example, [3, 3], would mean that up
+%       through the 2nd derivative must be continuous for both dimensions.
+%
+% The output traj contains a field poly such that
+% The first dimension indexes the polynomial coefficients
+% The second dimension indexes the dimension of the system (e.g. x, y, z, psi, ...)
+% The third dimension indexes the segment
+% The fourth dimension indexes the derivative.  
+%
+% So, traj.poly(:, b, c, d) will return the polynomial defining the b^th
+% dimension, the c^th segment, and the (d-1)^th derivative.
 %
 % A more detailed explanation of this program will go here
 
@@ -57,6 +66,12 @@ for idx = 1:2:length(options)
             % minderiv = 2 corresponds to acceleration
             % minderiv = 0 corresponds to position
             minderiv = max(0,options{idx+1});
+            
+            % The first derivative which can be discontinuous
+            if ~exist('contderiv', 'var')
+                contderiv = minderiv;
+            end
+            
             if max(minderiv) > 4; warning('This program can only support up to 4 derivatives at this time.'); end; %#ok<WNTAG>
             
             % We can also determine the number of dimensions
@@ -68,6 +83,8 @@ for idx = 1:2:length(options)
             numerical = options{idx+1};
         case 'convergetol'
             convergetol = options{idx+1};
+        case 'contderiv'
+            contderiv = max(0,options{idx+1});
     end
 end
 
@@ -137,7 +154,7 @@ for pt = 1:N+1
         deriv = 0;
         temp = basis(t,deriv,n,D);
         for idx = 1:d
-            if ~isnan(waypoints(pt).pos(idx)) && (deriv < minderiv(idx))
+            if ~isnan(waypoints(pt).pos(idx)) && (deriv < contderiv(idx))
                 startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
                 E(row,startidx:startidx+n) = temp;
                 Ebeq(row) = waypoints(pt).pos(idx);
@@ -150,7 +167,7 @@ for pt = 1:N+1
         deriv = 1;
         temp = basis(t,deriv,n,D);
         for idx = 1:d
-            if ~isnan(waypoints(pt).vel(idx)) && (deriv < minderiv(idx))
+            if ~isnan(waypoints(pt).vel(idx)) && (deriv < contderiv(idx))
                 startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
                 E(row,startidx:startidx+n) = temp;
                 Ebeq(row) = waypoints(pt).vel(idx)*dt;
@@ -163,7 +180,7 @@ for pt = 1:N+1
         deriv = 2;
         temp = basis(t,deriv,n,D);
         for idx = 1:d
-            if ~isnan(waypoints(pt).acc(idx)) && (deriv < minderiv(idx))
+            if ~isnan(waypoints(pt).acc(idx)) && (deriv < contderiv(idx))
                 startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
                 E(row,startidx:startidx+n) = temp;
                 Ebeq(row) = waypoints(pt).acc(idx)*dt^2;
@@ -176,7 +193,7 @@ for pt = 1:N+1
         deriv = 3;
         temp = basis(t,deriv,n,D);
         for idx = 1:d
-            if ~isnan(waypoints(pt).jerk(idx)) && (deriv < minderiv(idx))
+            if ~isnan(waypoints(pt).jerk(idx)) && (deriv < contderiv(idx))
                 startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
                 E(row,startidx:startidx+n) = temp;
                 Ebeq(row) = waypoints(pt).jerk(idx)*dt^3;
@@ -194,7 +211,7 @@ end
 
 % There will be a continunity constraint (except for the first and last points)
 % for each output and its derivatives below the one being minimized.
-nrows = sum((N-1)*minderiv);
+nrows = sum((N-1)*contderiv);
 C = zeros(nrows,d*N*(n+1));
 
 % This will be zeros since we have
@@ -223,7 +240,7 @@ for pt = 2:N
     dt2 = durations(bgroup + 1);
     
     % Loop through the derivatives
-    for deriv = 0:(max(minderiv)-1)
+    for deriv = 0:(max(contderiv)-1)
         
         % Determine our bases at this timestep and for this derivative
         % basis1 corresponds to the end of the first segment and basis0
@@ -241,7 +258,7 @@ for pt = 2:N
             
             % We don't want to impose constraints on derivatives higher
             % than or equal to what we are minimizing
-            if deriv < minderiv(idx)
+            if deriv < contderiv(idx)
                 
                 % The first basis group starts here
                 startidx = ((idx-1)+d*(bgroup-1))*(n+1)+1;
@@ -489,6 +506,8 @@ if ~numerical
     
     % Now, extract the coefficients
     x = x(1:size(problem.H));
+    
+    fprintf('Solved analytically\n');
     
 else
     
