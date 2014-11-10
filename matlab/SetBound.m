@@ -4,7 +4,7 @@ function bound = SetBound(interval,varargin)
 bound.time = interval;
 
 % allowed inputs are:
-allowed_in = {'pos','vel','acc','jerk','psi'};
+allowed_in = {'pos','vel','acc','jerk','snap','psi'};
 allowed_bound = {'lb', 'ub', '1norm', 'infnorm'};
 
 for idx = 1:length(varargin)

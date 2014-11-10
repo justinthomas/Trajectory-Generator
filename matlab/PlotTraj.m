@@ -11,6 +11,7 @@ nderiv = size(val, 3);
 
 h = zeros(ndim,1);
 for idx = 1:ndim
+    
     h(idx) = figure;
     
     % Make the rows be timesteps and the columns to be derivatives
@@ -20,9 +21,10 @@ for idx = 1:ndim
     xlabel('time (s)')
     ylabel('value')
     legend('Value', 'd/dt', 'd^2/dt^2', 'd^3/dt^3', 'd^4/dt^4')
-
-    pause;
-    close
+    
+    drawnow;
+    pause(4);
+    close;
 end
 
 end

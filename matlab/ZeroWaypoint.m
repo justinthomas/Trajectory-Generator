@@ -10,6 +10,6 @@ if nargin<1
 end
 
 temp = zeros(ndim,1);
-output = struct('time',{time},'pos',{temp},'vel',{temp},'acc',{temp},'jerk',{temp});
+output = struct('time',{time},'pos',{temp},'vel',{temp},'acc',{temp},'jerk',{temp},'snap',{temp});
 
 end
