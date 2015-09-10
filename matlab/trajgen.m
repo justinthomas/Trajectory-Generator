@@ -602,7 +602,11 @@ end
 % So, traj.poly(:, b, c, d) will return the polynomial defining the b^th
 % dimension, the c^th segment, and the (d-1)^th derivative.
 traj.poly = zeros(n+1, d, N);
-traj.poly(:) = x;
+if ~isempty(x)
+    traj.poly(:) = x;
+else
+    error('No Solution found');
+end
 
 traj.durations = durations;
 traj.keytimes = keytimes;
