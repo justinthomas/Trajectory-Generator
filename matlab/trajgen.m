@@ -67,7 +67,7 @@ for idx = 1:2:length(options)
             % minderiv = 0 corresponds to position
             minderiv = max(0,options{idx+1});
 
-            % The first derivative which can be discontinuous
+            % The highest derivative which must be continuous
             if ~exist('contderiv', 'var')
                 contderiv = minderiv;
             end
@@ -272,7 +272,7 @@ for pt = 2:N
         for idx = 1:d
 
             % We don't want to impose continunity on derivatives higher
-            % than what we are minimizing
+            % than contderiv
             if deriv <= contderiv(idx)
 
                 % The first basis group starts here
@@ -581,7 +581,7 @@ for seg = 1:N
     traj.poly(:,:,seg) = traj.poly(:,:,seg)./repmat((t.^tpow),[1 d]);
 
     % Differentiate the polynomials
-    for deriv = 1:max(minderiv)
+    for deriv = 1:max(contderiv)
         traj.poly(:,:,seg,deriv+1) = D{deriv}*traj.poly(:,:,seg, 1);
     end
 
