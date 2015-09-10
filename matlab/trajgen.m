@@ -528,8 +528,47 @@ else
 
     % If we have the cplex solvers in our path, use them.  Otherwise, we
     % will default to MATLAB's optimization toolbox and use quadprog.
-    if exist('cplexqp.p', 'file')
+    
+    if exist('gurobi', 'file')
+        
+        clear model;
+        model.Q = sparse(H);
+        model.A = sparse([problem.Aeq; problem.Aineq]);
+        model.rhs = [problem.beq; problem.bineq];
+        
+        model.sense = [...
+            repmat('=', size(problem.Aeq, 1), 1); ...
+            repmat('<', size(problem.Aineq, 1), 1)];
+        
+        % Bounds on x
+        model.lb = - Inf(size(model.A, 2), 1);
+        
+        % Linear component
+        model.obj = zeros(size(model.A,2), 1);
+        
+        % Params
+        params.NumericFocus = 1;            % ?
+        params.BarHomogeneous = 1;          % ?
+        params.BarConvTol = convergetol;    % convtol;
+        params.BarIterLimit = 24000;        % Maybe a time limit would be better
+        params.outputflag = 1;              % Display running output
+        params.Presolve = 2;                % Maximize presolve effort
+        
+        fprintf('Solving using Gurobi...\n');
+        result = gurobi(model, params);
 
+        fprintf('Gurobi status: %s, time: %2.3f seconds\n',...
+            result.status, result.runtime);
+        
+        x = [];
+        if isfield(result, 'x')
+            x = result.x;
+        end
+        
+        exitflag = strcmp(result.status, 'OPTIMAL');
+        
+    elseif exist('cplexqp.p', 'file')
+        
         problem.f = zeros(size(H,2),1);
         problem.options = cplexoptimset('cplex');
         % If primal obj and dual obj are this close, the solution is considered optimal
