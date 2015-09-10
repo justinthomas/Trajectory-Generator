@@ -367,7 +367,13 @@ while (1)
 
     % Determine the segments which the bound starts and finishes in
     start_seg = find(keytimes <= t(1), 1, 'last');
-    end_seg = find(keytimes < t(2), 1, 'last');
+    % If we want it at one instant in time
+    if length(t) == 1
+        t(2) = t(1);
+        end_seg = start_seg;
+    else
+        end_seg = find(keytimes < t(2), 1, 'last');
+    end
 
     % If the bound spans more than one segment, split it up
     if ~isequal(start_seg, end_seg)
