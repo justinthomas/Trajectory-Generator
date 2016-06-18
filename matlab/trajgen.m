@@ -83,9 +83,59 @@ for idx = 1:2:length(options)
             numerical = options{idx+1};
         case 'convergetol'
             convergetol = options{idx+1};
+            sprintf(['\033[;33m Setting convergetol = ', num2str(convergetol)]);
         case 'contderiv'
             contderiv = max(0,options{idx+1});
+        case 'ndim'
+            ndim = options{idx+1};
     end
+end
+
+if ~exist('contderiv', 'var')
+    contderiv = minderiv;
+end
+
+decoupled = ...
+    ndim > 1 && isempty(bounds) || ...
+    ndim > 1 && all(strcmp({bounds.type}, 'lb') | strcmp({bounds.type}, 'ub'));
+
+if decoupled
+    % In this case, all dimensions are decoupled. Let's call trajgen for
+    % each one to simplify the solution.
+    
+    traj = cell(ndim, 1);
+    wp = waypoints;
+    for didx = 1:ndim
+        
+        new_options = options;
+        new_options{find(strcmp(options, 'ndim')) + 1} = 1;
+        
+        minderiv_idx = find(strcmp(options, 'minderiv')) + 1;
+        new_options{minderiv_idx} = options{minderiv_idx}(didx);
+        
+        for wpidx = 1:length(waypoints)
+            wp(wpidx).time = waypoints(wpidx).time;
+            wp(wpidx).pos = waypoints(wpidx).pos(didx);
+            wp(wpidx).vel = waypoints(wpidx).vel(didx);
+            wp(wpidx).acc = waypoints(wpidx).acc(didx);
+            wp(wpidx).jerk = waypoints(wpidx).jerk(didx);
+            wp(wpidx).snap = waypoints(wpidx).snap(didx);
+        end
+        
+        new_bounds = bounds;
+        for bidx = 1:length(new_bounds)
+            new_bounds(bidx).arg = new_bounds(bidx).arg(didx);
+        end
+        
+        [dim_traj, durations, problem, dim_exitflag] = trajgen(wp, new_options, new_bounds);
+        traj{didx} = dim_traj;
+        
+        if (dim_exitflag ~= 1)
+            warning(['Dimension ' num2str(didx), ' did not converge and had an exit flag of ', num2str(dim_exitflag)]);
+        end
+        exitflag(didx) = dim_exitflag; %#ok<AGROW>
+    end
+    return;
 end
 
 %% Keytimes, Segments
@@ -110,6 +160,23 @@ for idx = 1:length(waypoints)
     waypoints(idx).jerk = waypoints(idx).jerk(:);
     waypoints(idx).snap = waypoints(idx).snap(:);
 end
+
+% count = 0;
+% idx = 0;
+% while true
+%     idx = idx + 1;
+%     if idx + 1 > length(waypoints)
+%         break;
+%     end
+%     
+%     t = waypoints(idx).time;
+%     dt = waypoints(idx+1).time - t;
+%     if dt > 1
+%         waypoints = [waypoints(1:idx), NanWaypoint(t + dt/2, d), waypoints(idx+1:end)];
+%         count = count + 1;
+%     end
+% end
+% disp([num2str(count) ' waypoints added']);
 
 % Determine the size of E for preallocation.  There will be a row for every
 % non-NaN and non-empty constraint.  This will also generate an error if
@@ -516,26 +583,44 @@ problem.bineq = bineq;
 
 %% Determine the solution
 
+% We try a maxtrix inversion approach first, and use the QP solver if the
+% matrix issues a singularity warning.
+%
 % min x'*H*x  subject to:  A*x <= b and Aeq*x = beq
 if ~numerical
 
     temp = [2*problem.H, problem.Aeq';...
         problem.Aeq, zeros(size(problem.Aeq,1)')];
 
-    % Analytic Solution
-    x = temp\[zeros(size(temp,1)-length(problem.beq),1); problem.beq];
+    % Set singularity warning to an error
+    warning('error', 'MATLAB:singularMatrix');
+    try
+        % Analytic Solution
+        x = temp \ [zeros(size(temp,1)-length(problem.beq),1); problem.beq];
+        exitflag = true;
+        
+        % Now, extract the coefficients
+        x = x(1:size(problem.H));
+        
+        fprintf('Solved analytically.\n');
+        if cond(temp) > 10e6
+            warning('Condition number = %2.2f\n', cond(temp));
+        end
+        
+    catch
+        % warning('MATLAB:singularMatrix');
+        numerical = true;
+        
+        warning('Matrix inversion approach is nearly singular. Using numerical methods instead.');
+    end
+end
 
-    % Now, extract the coefficients
-    x = x(1:size(problem.H));
-
-    fprintf('Solved analytically\n');
-
-else
+if numerical
 
     % If we have the cplex solvers in our path, use them.  Otherwise, we
     % will default to MATLAB's optimization toolbox and use quadprog.
     
-    if exist('gurobi', 'file')
+    if false && exist('gurobi', 'file')
         
         clear model;
         model.Q = sparse(H);
@@ -556,9 +641,10 @@ else
         params.NumericFocus = 1;            % ?
         params.BarHomogeneous = 1;          % ?
         params.BarConvTol = convergetol;    % convtol;
-        params.BarIterLimit = 24000;        % Maybe a time limit would be better
+        params.BarIterLimit = inf;        % Maybe a time limit would be better
         params.outputflag = 1;              % Display running output
         params.Presolve = 2;                % Maximize presolve effort
+        params.TimeLimit = 10;
         
         fprintf('Solving using Gurobi...\n');
         result = gurobi(model, params);
@@ -575,18 +661,22 @@ else
         
     elseif exist('cplexqp.p', 'file')
         
+        fprintf('Solving using CPLEX...\n');
+        
         problem.f = zeros(size(H,2),1);
         problem.options = cplexoptimset('cplex');
         % If primal obj and dual obj are this close, the solution is considered optimal
         problem.options.barrier.convergetol = convergetol;
 
         ticker2 = tic;
-        [x, fval, exitflag, output] = cplexqp(problem); %#ok<NASGU,ASGLU>
+        [x, fval, exitflag, output] = cplexqp(problem); %#ok<ASGLU>
         temp = toc(ticker2);
         fprintf('CPLEX solve time: %2.3f seconds\n', temp);
 
     else
 
+        fprintf('Solving using quadprog...\n');
+        
         % Set up the problem
         problem.options = optimset('MaxIter',1500,'Display','on','Algorithm','active-set');
         problem.solver = 'quadprog';
@@ -630,7 +720,7 @@ for seg = 1:N
     traj.poly(:,:,seg) = traj.poly(:,:,seg)./repmat((t.^tpow),[1 d]);
 
     % Differentiate the polynomials
-    for deriv = 1:max(contderiv)
+    for deriv = 1:4
         traj.poly(:,:,seg,deriv+1) = D{deriv}*traj.poly(:,:,seg, 1);
     end
 

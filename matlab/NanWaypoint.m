@@ -1,4 +1,5 @@
 function output = NanWaypoint(time, num_dimensions)
+% waypoint = NanWaypoint(time, number_of_dimensions)
 
 if nargin<1
     time = nan;

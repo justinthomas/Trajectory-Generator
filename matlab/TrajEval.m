@@ -11,6 +11,17 @@ function val = TrajEval(traj, t)
 % positions of the first dimension, you would use val(:,1,1)
 % To obtain the velocities, you would use val(:,1,2)
 
+% If we are passed a cell array of trajectory polynomials, 
+if iscell(traj)
+    val = cell(length(traj), 1);
+    for idx = 1:length(traj)
+        val{idx} = TrajEval(traj{idx}, t);
+    end
+    % Concatenate the evaluated trajectories
+    val = cat(2, val{:});
+    return;
+end
+
 poly_size = size(traj.poly);
 
 % The polynomial order
