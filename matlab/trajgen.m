@@ -678,12 +678,12 @@ if numerical
         fprintf('Solving using quadprog...\n');
         
         % Set up the problem
-        problem.options = optimset('MaxIter',1500,'Display','on','Algorithm','active-set');
+        problem.options = optimset('MaxIter',1500,'Display','on', 'TolFun', convergetol);
         problem.solver = 'quadprog';
 
         % Numerical Solution
         ticker2 = tic;
-        [x, fval, exitflag, output] = quadprog(problem); %#ok<NASGU,ASGLU>
+        [x, fval, exitflag, output] = quadprog(problem); %#ok<ASGLU>
         temp = toc(ticker2);
         fprintf('QuadProg solve time: %2.3f seconds\n', temp);
     end
