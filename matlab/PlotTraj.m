@@ -4,6 +4,8 @@ warning off MATLAB:legend:IgnoringExtraEntries
 
 if iscell(traj)
     keytimes = traj{1}.keytimes;
+else
+    keytimes = traj.keytimes;
 end
 
 tstep = (keytimes(end) - keytimes(1))/1000;

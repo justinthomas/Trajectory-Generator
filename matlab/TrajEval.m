@@ -47,8 +47,11 @@ for idx = 1:length(t)
     % This will only affect seg when t = traj.keytimes(end)
     seg = min(seg,N);
     
+    seg_dt = traj.durations(seg);
+    nondim_t = (t(idx) - traj.keytimes(seg)) / seg_dt;
+    
     % Generate our basis
-    basis = (t(idx)-traj.keytimes(seg)).^(n:-1:0);
+    basis = nondim_t.^(n:-1:0);
     
     % The old way:
     
@@ -65,6 +68,9 @@ for idx = 1:length(t)
     %% Now store the derivative values in the rows, the dimensions in the
     % columns, and the time index as the depth
     val(:,:,idx) = permute(eval(1,:,1,:),[4, 2, 3, 1]);
+    
+    %% Fix time scaling (Note: This could be done before the sum above)    
+    val(:,:,idx) = bsxfun(@times, val(:,:,idx), 1./seg_dt.^(0:deriv)');
     
 end
 

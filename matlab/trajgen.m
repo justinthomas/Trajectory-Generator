@@ -707,23 +707,12 @@ end
 traj.durations = durations;
 traj.keytimes = keytimes;
 
-%% Unnormalize the coefficients
-
-% To scale the bases, we will need the powers of the segment
-% duration
-tpow = (n:-1:0)';
+%% Generate the derivatives
 
 for seg = 1:N
-
-    % Renormalize the segments
-    t = durations(seg);
-    traj.poly(:,:,seg) = traj.poly(:,:,seg)./repmat((t.^tpow),[1 d]);
-
-    % Differentiate the polynomials
     for deriv = 1:4
         traj.poly(:,:,seg,deriv+1) = D{deriv}*traj.poly(:,:,seg, 1);
     end
-
 end
 
 end
