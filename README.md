@@ -1,4 +1,4 @@
 Trajectory-Generator
 ====================
 
-This repository contains the source code for a trajectory generator to be compiled as a mex file for use in MATLAB or ROS
+This is a MATLAB-based trajectory generator with a specific application for micro aerial vehicles
