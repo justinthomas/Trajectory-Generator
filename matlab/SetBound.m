@@ -1,4 +1,10 @@
 function bound = SetBound(interval,varargin)
+% bound = SetBound(interval, varargin)
+% 
+% varargin:
+%   specify a bound on 'pos', 'vel', 'acc', 'jerk', 'snap', or 'psi'
+%   specify 'lb', 'ub'
+%   specify the bound
 
 %always require time
 bound.time = interval;

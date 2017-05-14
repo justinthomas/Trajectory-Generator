@@ -1,5 +1,5 @@
 function [traj, durations, problem, exitflag] = trajgen(waypoints, options, bounds)
-% function traj = trajgen(waypoints, options, bounds, varargin)
+% function [traj, durations, problem, exitflag] = trajgen(waypoints, options, bounds, varargin)
 %
 % options is a cell array formatted {'parameter1', value1, 'parameter2', value2, ...}
 %
@@ -54,6 +54,8 @@ n = 12;      % Polynomial order
 constraints_per_seg = 2*(n+1);   % Number of inequality constraints to enforce per segment
 convergetol = 1e-08;    % Tolernce
 
+verbose = true;
+
 %% Process varargin
 for idx = 1:2:length(options)
 
@@ -88,12 +90,28 @@ for idx = 1:2:length(options)
             contderiv = max(0,options{idx+1});
         case 'ndim'
             ndim = options{idx+1};
+        case 'verbose'
+            verbose = options{idx+1};
     end
 end
+
+%% Inline Functions
+
+vprintf = @(str, varargin) fprintf(str(1:verbose*end), varargin{:});
+
+%% Checks
 
 if ~exist('contderiv', 'var')
     contderiv = minderiv;
 end
+
+assert(exist('ndim', 'var') == 1, 'The ndim option must be specified.');
+assert(length(contderiv) == length(minderiv), 'contderiv and minderiv must be the same length.')
+assert(all(diff([waypoints.time]) > 0), '[waypoints.time] must be monotonically increasing.');
+
+% Should check to make sure that length(bounds(:).arg) is consistent
+
+%% 
 
 decoupled = ...
     ndim > 1 && isempty(bounds) || ...
@@ -112,6 +130,9 @@ if decoupled
         
         minderiv_idx = find(strcmp(options, 'minderiv')) + 1;
         new_options{minderiv_idx} = options{minderiv_idx}(didx);
+        
+        contderiv_idx = find(strcmp(options, 'contderiv')) + 1;
+        new_options{contderiv_idx} = options{contderiv_idx}(didx);
         
         for wpidx = 1:length(waypoints)
             wp(wpidx).time = waypoints(wpidx).time;
@@ -432,14 +453,35 @@ while (1)
         t = keytimes([1 end]);
     end
 
-    % Determine the segments which the bound starts and finishes in
-    start_seg = find(keytimes <= t(1), 1, 'last');
+    % Determine the segments which the bound starts and finishes in. But,
+    % first some bound checking.
+    if any(t < min(keytimes)) || any(t > max(keytimes))
+        error('You must specify bounds within your keytimes.');
+    end
+    
+    % This could probably be more elegant.
+    if t(1) == keytimes(1)
+        start_seg = 1;
+    elseif t(end) == keytimes(end)
+        start_seg = length(keytimes) - 1;
+    else
+        start_seg = find(keytimes <= t(1), 1, 'last');
+    end
+    
+    if isempty(start_seg) || start_seg > length(keytimes)
+      error('Not sure how this happened.');
+    end
+    
     % If we want it at one instant in time
     if length(t) == 1
         t(2) = t(1);
         end_seg = start_seg;
     else
         end_seg = find(keytimes < t(2), 1, 'last');
+    end
+
+    if (start_seg < 1 || start_seg > length(keytimes) - 1 || end_seg > length(keytimes) || end_seg < start_seg)
+      keyboard
     end
 
     % If the bound spans more than one segment, split it up
@@ -453,7 +495,6 @@ while (1)
 
         % Only consider the current segment for the current bound
         t = [t(1) keytimes(start_seg + 1)];
-
     end
 
     % Now generate the times at which this constraint will be applied
@@ -602,8 +643,8 @@ if ~numerical
         % Now, extract the coefficients
         x = x(1:size(problem.H));
         
-        fprintf('Solved analytically.\n');
-        if cond(temp) > 10e6
+        vprintf('Solved analytically.\n');
+        if cond(temp) > 10e8
             warning('Condition number = %2.2f\n', cond(temp));
         end
         
@@ -621,7 +662,8 @@ if numerical
     % will default to MATLAB's optimization toolbox and use quadprog.
     
     if false && exist('gurobi', 'file')
-        
+        vprintf('Solving using Gurobi...\n');
+         
         clear model;
         model.Q = sparse(H);
         model.A = sparse([problem.Aeq; problem.Aineq]);
@@ -638,19 +680,16 @@ if numerical
         model.obj = zeros(size(model.A,2), 1);
         
         % Params
-        params.NumericFocus = 1;            % ?
-        params.BarHomogeneous = 1;          % ?
-        params.BarConvTol = convergetol;    % convtol;
-        params.BarIterLimit = inf;        % Maybe a time limit would be better
-        params.outputflag = 1;              % Display running output
+        % params.NumericFocus = 1;            % ?
+        % params.BarHomogeneous = 1;          % ?
+        % params.BarConvTol = convergetol;    % convtol;
+        params.BarIterLimit = inf;          % Maybe a time limit would be better
         params.Presolve = 2;                % Maximize presolve effort
-        params.TimeLimit = 10;
+        params.TimeLimit = 10;              % Not sure if this works
+        params.OutputFlag = verbose;        % Display running output
         
-        fprintf('Solving using Gurobi...\n');
         result = gurobi(model, params);
-
-        fprintf('Gurobi status: %s, time: %2.3f seconds\n',...
-            result.status, result.runtime);
+        vprintf('Gurobi status: %s, time: %2.3f seconds\n', result.status, result.runtime);
         
         x = [];
         if isfield(result, 'x')
@@ -658,10 +697,9 @@ if numerical
         end
         
         exitflag = strcmp(result.status, 'OPTIMAL');
-        
+
     elseif exist('cplexqp.p', 'file')
-        
-        fprintf('Solving using CPLEX...\n');
+        vprintf('Solving using CPLEX...\n');
         
         problem.f = zeros(size(H,2),1);
         problem.options = cplexoptimset('cplex');
@@ -671,21 +709,20 @@ if numerical
         ticker2 = tic;
         [x, fval, exitflag, output] = cplexqp(problem); %#ok<ASGLU>
         temp = toc(ticker2);
-        fprintf('CPLEX solve time: %2.3f seconds\n', temp);
+        vprintf('CPLEX solve time: %2.3f seconds\n', temp);
 
     else
-
-        fprintf('Solving using quadprog...\n');
+        vprintf('Solving using quadprog...\n');
         
         % Set up the problem
-        problem.options = optimset('MaxIter',1500,'Display','on', 'TolFun', convergetol);
+        problem.options = optimset('MaxIter',1500, 'Display','off', 'TolFun',convergetol);
         problem.solver = 'quadprog';
 
         % Numerical Solution
         ticker2 = tic;
         [x, fval, exitflag, output] = quadprog(problem); %#ok<ASGLU>
         temp = toc(ticker2);
-        fprintf('QuadProg solve time: %2.3f seconds\n', temp);
+        vprintf('QuadProg solve time: %2.3f seconds\n', temp);
     end
 
 end
@@ -701,7 +738,7 @@ traj.poly = zeros(n+1, d, N);
 if ~isempty(x)
     traj.poly(:) = x;
 else
-    error('No Solution found');
+    warning('No Solution found');
 end
 
 traj.durations = durations;

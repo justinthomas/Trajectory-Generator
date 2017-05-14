@@ -7,7 +7,7 @@ for idx = 1:n
 end
 D = cell(4,1);
 D{1} = LinDeriv;
-D{2} = LinDeriv^2;
+D{2} = LinDeriv*D{1};
 D{3} = LinDeriv*D{2};
 D{4} = LinDeriv*D{3};
 D{5} = LinDeriv*D{4};

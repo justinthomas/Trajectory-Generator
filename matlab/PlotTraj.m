@@ -1,4 +1,5 @@
 function [] = PlotTraj(traj)
+  % PlotTraj(traj)
 
 warning off MATLAB:legend:IgnoringExtraEntries
 
@@ -8,10 +9,10 @@ else
     keytimes = traj.keytimes;
 end
 
-tstep = (keytimes(end) - keytimes(1))/1000;
+tstep = (keytimes(end) - keytimes(1))/100;
 tvec = keytimes(1):tstep:keytimes(end);
 
-val = TrajEval(traj, tvec);
+val = TrajEval(traj, tvec, 0:2);
 ndim = size(val, 2);
 nderiv = size(val, 3);
 
@@ -27,6 +28,18 @@ for idx = 1:ndim
     xlabel('time (s)')
     ylabel('value')
     legend('Value', 'd/dt', 'd^2/dt^2', 'd^3/dt^3', 'd^4/dt^4')
+end
+
+switch ndim
+    case 2
+        % Assume x and z
+        plot(val(:,1,1), val(:,2,1));
+        hold all;
+        plot(val(:,1,1), val(:,1,2));
+        plot(val(:,1,1), val(:,2,2));
+        legend('Z', 'X Velocity', 'Z Velocity');
+        xlabel('X Position');
+        ylabel('Z Position, X Velocity, or Z Velocity');
 end
 
 drawnow;
